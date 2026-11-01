@@ -113,6 +113,16 @@ The bar is not focusable or clickable. Set `hide_if_all_visible = false` to keep
 it visible. Options: `handle = "┃"`, `mark = "•"`, `blend = 30`, `refresh = 30`.
 Positions are projected by buffer line number, including when text wraps or folds.
 
+For an opaque black handle on a transparent track, set `handle = " "`,
+`blend = 100`, and define these highlights in your colorscheme callback:
+
+```lua
+vim.api.nvim_set_hl(0, "UiToolsScrollbar", { bg = "NONE", blend = 100 })
+vim.api.nvim_set_hl(0, "UiToolsScrollbarHandle", { bg = "#000000", blend = 0 })
+```
+
+Foreground-only marker groups retain the handle/track background underneath them.
+
 Diagnostics and search markers are enabled by default (`diagnostics = true`,
 `search = true`). The highest-priority marker wins a cell: diagnostics over
 search, with error diagnostics above warnings. Built-in search uses the last

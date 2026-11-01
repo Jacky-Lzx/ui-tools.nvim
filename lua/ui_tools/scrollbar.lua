@@ -169,16 +169,19 @@ local function draw(ctx)
   local marks = collect(ctx)
   local first = M.project(ctx.top, ctx.count, ctx.height)
   local last = M.project(ctx.bottom, ctx.count, ctx.height)
-  local lines, colors = {}, {}
+  local lines, colors, styles = {}, {}, {}
   for row = 1, ctx.height do
     local mark = marks[row]
     local handle = row >= first and row <= last
     lines[row] = mark and (mark.char or M.options.mark) or handle and M.options.handle or " "
-    colors[row] = mark and (mark.hl or "UiToolsSearch")
-      or handle and "UiToolsScrollbarHandle"
-      or "UiToolsScrollbar"
+    -- Keep the handle/track background beneath foreground-only marker groups.
+    colors[row] = { handle and "UiToolsScrollbarHandle" or "UiToolsScrollbar" }
+    if mark then
+      colors[row][2] = mark.hl or "UiToolsSearch"
+    end
+    styles[row] = table.concat(colors[row], "\001")
   end
-  local key = table.concat(lines, "\n") .. "\000" .. table.concat(colors, "\n")
+  local key = table.concat(lines, "\n") .. "\000" .. table.concat(styles, "\n")
   if key ~= bar.key then
     vim.api.nvim_buf_set_lines(bar.buf, 0, -1, false, lines)
     vim.api.nvim_buf_clear_namespace(bar.buf, ns, 0, -1)

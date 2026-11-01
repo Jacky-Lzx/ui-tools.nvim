@@ -108,8 +108,69 @@ try:
     ui.request("nvim_input_mouse", ["left", "release", "", 0, 0, 7])
     lua("vim.wait(80)")
     assert lua("return vim.fn.foldclosed(1)") == -1
+    lua("""
+      vim.cmd('normal! zE')
+      old_column=vim.wo.foldcolumn
+      old_chars=vim.api.nvim_get_option_value('fillchars',{win=0,scope='local'})
+      vim.o.mousetime=0
+      stc.setup({slot_width=2,folds={levels=true}})
+      for _,range in ipairs({{2,20},{4,17},{6,14},{8,11}}) do
+        vim.cmd(range[1]..','..range[2]..'fold'); vim.cmd('normal! zR')
+      end
+      vim.api.nvim_win_set_cursor(0,{1,0}); vim.cmd('normal! zt'); stc.refresh()
+    """)
+    assert width() == 10, (width(), lua("return stc.fold_widths"))
+    assert glyph(1, 6) == "▾"
+    assert glyph(3, 6) == "│" and glyph(3, 7) == "▾"
+    assert glyph(5, 6) == "│" and glyph(5, 7) == "│" and glyph(5, 8) == "▾"
+    assert glyph(7, 9) == "▾", "Fourth fold level was not displayed"
+
+    def click_fold(line, level):
+        frame()
+        row = lua(f"return vim.fn.screenpos(vim.api.nvim_get_current_win(),{line},1).row-1")
+        ui.request("nvim_input_mouse", ["left", "press", "", 0, row, 5 + level])
+        ui.request("nvim_input_mouse", ["left", "release", "", 0, row, 5 + level])
+        lua("vim.wait(80)")
+
+    click_fold(4, 2)
+    assert lua("return {vim.fn.foldclosed(2),vim.fn.foldclosed(4)}") == [-1, 4]
+    assert glyph(3, 7) == "▸", "The second-level toggle was not closed"
+    click_fold(4, 2)
+    assert lua("return vim.fn.foldclosed(4)") == -1
+    assert width() == 10
+    click_fold(6, 3)
+    assert lua("return {vim.fn.foldclosed(4),vim.fn.foldclosed(6)}") == [-1, 6]
+    # Closing the outer header must preserve the inner fold's closed state.
+    click_fold(2, 1)
+    assert lua("return vim.fn.foldclosed(2)") == 2
+    click_fold(2, 1)
+    assert lua("return {vim.fn.foldclosed(2),vim.fn.foldclosed(6)}") == [-1, 6]
+    # Native fold metadata distinguishes adjacent folds and identical starts.
+    lua("""
+      vim.cmd('normal! zE')
+      for _,range in ipairs({{2,4},{5,7}}) do
+        vim.cmd(range[1]..','..range[2]..'fold'); vim.cmd('normal! zR')
+      end
+      stc.refresh()
+    """)
+    assert width() == 8, "Removing deep folds did not restore the two-cell minimum"
+    assert glyph(1, 6) == "▾" and glyph(4, 6) == "▾"
+    lua("""
+      vim.cmd('normal! zE')
+      for _,range in ipairs({{2,15},{2,10},{2,6}}) do
+        vim.cmd(range[1]..','..range[2]..'fold'); vim.cmd('normal! zR')
+      end
+      stc.refresh()
+    """)
+    assert glyph(1, 6) == "▾" and glyph(1, 7) == "▾" and glyph(1, 8) == "▾"
+    click_fold(2, 2)
+    assert lua("return vim.fn.foldclosed(2)") == 2
+    lua("vim.cmd('normal! zR'); vim.cmd('vsplit'); stc.refresh()")
+    assert lua("return vim.wo.foldcolumn") == "auto:9"
     lua("require('ui_tools').disable()")
-    print("status column UI: compact slots, diagnostics, numhl isolation, wide signs, shrink, clicks and scrolling passed")
+    assert lua("return vim.wo.foldcolumn == old_column")
+    assert lua("return vim.api.nvim_get_option_value('fillchars',{win=0,scope='local'}) == old_chars")
+    print("status column UI: diagnostics, compact slots and native nested folds/clicks/restoration passed")
 finally:
     ui.close()
     signal.alarm(0)

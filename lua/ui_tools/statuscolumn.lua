@@ -1,4 +1,5 @@
-local M = { windows = {}, cache = {}, widths = {}, enabled = false }
+local M =
+  { windows = {}, cache = {}, widths = {}, fold_options = {}, fold_widths = {}, views = {}, enabled = false }
 local util = require("ui_tools.util")
 local format = "%!v:lua.require'ui_tools.statuscolumn'.render()"
 local generation = 0
@@ -23,11 +24,43 @@ local function kinds(entry)
   return type(entry) == "table" and entry or { entry }
 end
 
-local function measure(rows)
+local function prepare_folds(win, inherited)
+  if not M.options.folds.levels then
+    return
+  end
+  if not M.fold_options[win] then
+    local previous = {
+      foldcolumn = inherited and vim.go.foldcolumn or vim.wo[win].foldcolumn,
+      fillchars = inherited and ""
+        or vim.api.nvim_get_option_value("fillchars", { win = win, scope = "local" }),
+    }
+    vim.api.nvim_set_option_value(
+      "foldcolumn",
+      "auto:" .. M.options.folds.max_depth,
+      { win = win, scope = "local" }
+    )
+    vim.api.nvim_win_call(win, function()
+      local chars = vim.opt.fillchars:get()
+      chars.foldopen, chars.foldclose, chars.foldsep =
+        M.options.folds.open, M.options.folds.closed, M.options.folds.sep
+      vim.opt_local.fillchars = chars
+    end)
+    previous.applied_column = vim.wo[win].foldcolumn
+    previous.applied_chars = vim.api.nvim_get_option_value("fillchars", { win = win, scope = "local" })
+    M.fold_options[win] = previous
+  end
+  -- %C delegates exact starts, shared starts and nesting to Neovim's fold tree.
+  M.fold_widths[win] = vim.api.nvim_eval_statusline("%C", { winid = win, use_statuscol_lnum = 1 }).width
+end
+
+local function measure(rows, win)
   local widths = { total = 0 }
   for index, entry in ipairs(M.options.layout) do
     if entry ~= "number" then
       local width = M.options.slot_width
+      if M.options.folds.levels and vim.tbl_contains(kinds(entry), "fold") then
+        width = math.max(width, M.fold_widths[win] or 0)
+      end
       for _, row in pairs(rows) do
         for _, kind in ipairs(kinds(entry)) do
           if kind == "sign" or kind == "diagnostic" or kind == "git" then
@@ -48,7 +81,18 @@ local function release(win)
   if previous and vim.api.nvim_win_is_valid(win) and vim.wo[win].statuscolumn == format then
     vim.wo[win].statuscolumn = previous
   end
+  local folds = M.fold_options[win]
+  if folds and vim.api.nvim_win_is_valid(win) then
+    if vim.wo[win].foldcolumn == folds.applied_column then
+      vim.api.nvim_set_option_value("foldcolumn", folds.foldcolumn, { win = win, scope = "local" })
+    end
+    if vim.api.nvim_get_option_value("fillchars", { win = win, scope = "local" }) == folds.applied_chars then
+      vim.api.nvim_set_option_value("fillchars", folds.fillchars, { win = win, scope = "local" })
+    end
+  end
   M.windows[win], M.cache[win], M.widths[win] = nil, nil, nil
+  M.fold_options[win], M.fold_widths[win] = nil, nil
+  M.views[win] = nil
 end
 
 function M.refresh()
@@ -70,6 +114,7 @@ function M.refresh()
       or vim.wo[win].statuscolumn == format
       or opts.force
     then
+      local inherited = M.windows[win] == nil and vim.wo[win].statuscolumn == format
       if M.windows[win] == nil then
         -- Splits and per-buffer window options can inherit our format without
         -- a registry entry. Adopt them, but never restore an orphaned format.
@@ -77,9 +122,11 @@ function M.refresh()
         vim.wo[win].statuscolumn = format
       end
       if vim.wo[win].statuscolumn == format then
+        prepare_folds(win, inherited)
         local first, last = unpack(vim.api.nvim_win_call(win, function()
           return { vim.fn.line("w0"), vim.fn.line("w$") }
         end))
+        M.views[win] = { first, last }
         local rows = {}
         for _, mark in
           ipairs(
@@ -127,7 +174,7 @@ function M.refresh()
           end
         end
         M.cache[win] = rows
-        local widths = measure(rows)
+        local widths = measure(rows, win)
         local previous = M.widths[win]
         M.widths[win] = widths
         if previous and widths.total < previous.total then
@@ -140,6 +187,8 @@ function M.refresh()
   for win in pairs(M.windows) do
     if not vim.api.nvim_win_is_valid(win) then
       M.windows[win], M.cache[win], M.widths[win] = nil, nil, nil
+      M.fold_options[win], M.fold_widths[win] = nil, nil
+      M.views[win] = nil
     end
   end
   util.redraw()
@@ -158,6 +207,26 @@ local function schedule()
     queued = false
     M.refresh()
   end, M.options.refresh)
+end
+
+local function folds_changed()
+  if not M.enabled or not M.options.folds.levels then
+    return
+  end
+  -- Native fold clicks/commands need not move the cursor or emit WinScrolled.
+  -- Probe after input settles; refresh only when geometry or the viewport changed.
+  for win in pairs(M.fold_options) do
+    if vim.api.nvim_win_is_valid(win) and vim.wo[win].statuscolumn == format then
+      local width = vim.api.nvim_eval_statusline("%C", { winid = win, use_statuscol_lnum = 1 }).width
+      local view = vim.api.nvim_win_call(win, function()
+        return { vim.fn.line("w0"), vim.fn.line("w$") }
+      end)
+      if width ~= M.fold_widths[win] or not vim.deep_equal(view, M.views[win]) then
+        schedule()
+        return
+      end
+    end
+  end
 end
 
 local function part(kind, win, row)
@@ -216,10 +285,19 @@ function M.render()
     if entry == "number" then
       result[#result + 1] = part("number", win, row)
     else
-      local text, hl
+      local text, hl, native
       local choices = kinds(entry)
       if vim.v.virtnum == 0 then
         for _, kind in ipairs(choices) do
+          if
+            kind == "fold"
+            and M.options.folds.levels
+            and vim.wo[win].foldenable
+            and vim.fn.foldlevel(vim.v.lnum) > 0
+          then
+            text, native = "%C", true
+            break
+          end
           text, hl = symbol(kind, win, row)
           if text then
             break
@@ -227,16 +305,14 @@ function M.render()
         end
       end
       text = text or ""
-      text = label(
-        text
-          .. string.rep(
-            " ",
-            math.max(0, (widths[index] or M.options.slot_width) - vim.fn.strdisplaywidth(text))
-          ),
-        hl
-      )
+      local width = widths[index] or M.options.slot_width
+      if native then
+        text = "%#FoldColumn#%C%*" .. string.rep(" ", math.max(0, width - (M.fold_widths[win] or 0)))
+      else
+        text = label(text .. string.rep(" ", math.max(0, width - vim.fn.strdisplaywidth(text))), hl)
+      end
       -- A click function must cover the same column on every rendered row.
-      if vim.tbl_contains(choices, "fold") then
+      if vim.tbl_contains(choices, "fold") and not M.options.folds.levels then
         text = "%@v:lua.require'ui_tools.statuscolumn'.click@" .. text .. "%T"
       end
       result[#result + 1] = text
@@ -271,7 +347,7 @@ function M.setup(opts)
     layout = { { "diagnostic", "sign", "mark" }, "number", { "fold", "git" } },
     slot_width = 1,
     git_patterns = { "GitTools", "gitsigns" },
-    folds = { open = "▾", closed = "▸" },
+    folds = { open = "▾", closed = "▸", sep = "│", levels = false, max_depth = 9 },
     refresh = 30,
     force = false,
   }, opts or {})
@@ -293,9 +369,19 @@ function M.setup(opts)
   end
   util.cell(opts.folds.open, "folds.open")
   util.cell(opts.folds.closed, "folds.closed")
+  util.cell(opts.folds.sep, "folds.sep")
+  assert(type(opts.folds.levels) == "boolean", "folds.levels must be boolean")
+  assert(
+    type(opts.folds.max_depth) == "number"
+      and opts.folds.max_depth >= 1
+      and opts.folds.max_depth <= 9
+      and opts.folds.max_depth % 1 == 0,
+    "folds.max_depth must be an integer from 1 to 9"
+  )
   util.hl({ UiToolsMark = "Special" })
   M.options, M.enabled = opts, true
   local group = util.group("Statuscolumn")
+  vim.api.nvim_create_autocmd("SafeState", { group = group, callback = folds_changed })
   vim.api.nvim_create_autocmd({
     "BufWinEnter",
     "WinEnter",

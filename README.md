@@ -9,6 +9,7 @@ require("ui_tools").setup({
   statuscolumn = true,
   guide = { columns = { 121 } },
   feedback = { yank = true },
+  focus = { width = 100, height = 0.9, dim = true },
 })
 ```
 
@@ -75,6 +76,29 @@ flash:cancel() -- idempotent; does not affect overlapping flashes
 `timeout = 0` lasts until cancellation, buffer unload or plugin disable. A handle
 also has `is_active()`. Text is never changed; each flash tracks edits through
 extmarks. Line flashes affect all windows displaying the target buffer.
+
+## Zen, Zoom and dimming
+
+`ui.zen()` toggles a centered editing window; `ui.zoom()` toggles a full-width
+editing window. Switching between modes is supported. Both APIs work without
+setup, or use `focus = { width = 100, height = 0.9, backdrop = 60, dim = true }`.
+Widths/heights from 0 to 1 are proportions; larger values are cell counts.
+Per-call overrides such as `ui.zen({ width = 80 })` are also accepted.
+
+The focused window edits the same buffer. Original splits, window sizes, local
+options and folds stay in place beneath it. Focus has its own fold state. On
+exit, the focused buffer and view return to the source window if its buffer is
+unchanged. A modified buffer is never discarded to force this transfer. If
+Neovim refuses it, save the source buffer or enable `hidden`, then exit again.
+Manual window close, tab leave, resize and plugin disable clean up focus UI.
+The backdrop is a non-interactive float; no global display options are changed.
+
+Zen hides its line/sign/fold columns; Zoom retains those settings. Guides remain
+available in both modes. `ui.dim()` toggles dimming outside the indentation
+scope in the current window; `ui.dim(false)` disables it. Zen uses dimming by
+default. Customize `UiToolsDim` and `UiToolsBackdrop` through highlight groups.
+`require("ui_tools.focus").close()` exits either mode; `state()` reports mode,
+focused window and source window. No keys are installed.
 
 ## Development
 

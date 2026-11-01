@@ -92,7 +92,34 @@ try:
     assert "┆" not in screen()
     assert ui.attrs[ui.grid[0][0][1]].get('background') != 0xff0000
     assert lua("return next(require('ui_tools.render').errors) == nil")
-    print("UI: indentation, splits, typing, sign layout, fold clicks, Unicode/scroll guides and feedback passed")
+    lua("""
+      vim.api.nvim_buf_set_lines(0,0,-1,false,{'outside','  inside','    body','  end','after'})
+      vim.api.nvim_win_set_cursor(0,{3,4}); vim.cmd('vsplit')
+      original_layout = vim.fn.winlayout()
+      tools.setup({focus={width=50,height=0.8,backdrop=0},indent=true})
+      tools.zen()
+    """)
+    rendered = screen()
+    assert "body" in rendered and lua("return vim.api.nvim_win_get_width(0)") == 50, rendered
+    assert lua("return vim.wo.number == false")
+    ui.request("nvim_input", ["A edited<Esc>"])
+    lua("vim.wait(50)")
+    assert "edited" in screen()
+    ui.request("nvim_ui_try_resize", [70, 22])
+    lua("vim.wait(50)")
+    assert lua("return vim.api.nvim_win_get_width(0)") == 50
+    lua("tools.zoom()")
+    screen()
+    assert lua("return vim.api.nvim_win_get_width(0)") == 70
+    lua("tools.zoom()")
+    assert lua("return vim.deep_equal(original_layout, vim.fn.winlayout())")
+    assert "edited" in screen()
+    lua("tools.dim(true)")
+    screen()
+    assert lua("return next(require('ui_tools.render').errors) == nil")
+    lua("tools.disable()")
+    ui.request("nvim_ui_try_resize", [100,30])
+    print("UI: guides, signs, fold clicks, Unicode, feedback, focus typing/resize/restore and dim passed")
 finally:
     ui.close()
     signal.alarm(0)

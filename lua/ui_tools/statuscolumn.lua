@@ -33,7 +33,7 @@ function M.refresh()
   end
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     local buf = vim.api.nvim_win_get_buf(win)
-    if not util.eligible(win, buf, opts) then
+    if not util.eligible(win, buf, opts) or vim.w[win].ui_tools_statuscolumn_disable then
       release(win)
     elseif M.windows[win] ~= nil or vim.wo[win].statuscolumn == "" or opts.force then
       if M.windows[win] == nil then

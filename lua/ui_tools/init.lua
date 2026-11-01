@@ -1,5 +1,5 @@
 local M = {}
-local modules = { "indent", "statuscolumn", "guide", "feedback" }
+local modules = { "indent", "statuscolumn", "guide", "feedback", "focus" }
 
 local function highlights()
   require("ui_tools.util").hl({
@@ -8,13 +8,18 @@ local function highlights()
     UiToolsMark = "Special",
     UiToolsGuide = "NonText",
     UiToolsFlash = "Visual",
+    UiToolsDim = "Comment",
+    UiToolsBackdrop = "NormalFloat",
   })
 end
 
 function M.setup(opts)
   assert(vim.fn.has("nvim-0.11") == 1, "ui-tools.nvim requires Neovim 0.11+")
   opts = opts or {}
-  M.disable()
+  assert(
+    M.disable() ~= false,
+    "ui-tools: cannot replace configuration while a modified focus buffer is blocked"
+  )
   highlights()
   vim.api.nvim_create_autocmd("ColorScheme", {
     group = require("ui_tools.util").group("Highlights"),
@@ -33,7 +38,9 @@ function M.disable()
   for _, name in ipairs(modules) do
     local module = package.loaded["ui_tools." .. name]
     if module then
-      module.disable()
+      if module.disable() == false then
+        return false
+      end
     end
   end
   pcall(vim.api.nvim_del_augroup_by_name, "UiToolsHighlights")
@@ -57,6 +64,18 @@ end
 
 function M.pulse(opts)
   return M.flash(opts)
+end
+
+function M.zen(opts)
+  return require("ui_tools.focus").open("zen", opts)
+end
+
+function M.zoom(opts)
+  return require("ui_tools.focus").open("zoom", opts)
+end
+
+function M.dim(value)
+  return require("ui_tools.focus").dim(value)
 end
 
 return M

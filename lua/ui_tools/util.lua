@@ -11,7 +11,7 @@ end
 function M.eligible(win, buf, opts)
   return vim.api.nvim_win_is_valid(win)
     and vim.bo[buf].buftype == ""
-    and vim.api.nvim_win_get_config(win).relative == ""
+    and (vim.api.nvim_win_get_config(win).relative == "" or vim.w[win].ui_tools_focus == true)
     and not vim.wo[win].diff
     and not vim.tbl_contains(
       opts.exclude or { "help", "checkhealth", "lazy", "NvimTree" },

@@ -1,10 +1,8 @@
 """Minimal dependency-free MessagePack client for an attached Neovim UI."""
 import os
 from pathlib import Path
-import shutil
 import struct
 import subprocess
-import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -71,7 +69,7 @@ def unpack(stream):
 
 class Capture:
     def __init__(self, env):
-        self.process = subprocess.Popen(["nvim", "--embed", "--clean", "-n"], cwd=ROOT, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.process = subprocess.Popen([env.get("NVIM_BIN", "nvim"), "--embed", "--clean", "-n"], cwd=ROOT, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.serial = 0
         self.grid = []
         self.attrs = {0: {}}

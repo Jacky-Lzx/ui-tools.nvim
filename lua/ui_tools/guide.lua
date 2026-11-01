@@ -19,16 +19,8 @@ function M.setup(opts)
     end
     local widths = {}
     vim.api.nvim_win_call(ctx.win, function()
-      local row = ctx.top
-      while row < ctx.bottom do
-        local closed = vim.fn.foldclosed(row + 1)
-        if closed == row + 1 then
-          widths[row] = vim.fn.strdisplaywidth(vim.fn.foldtextresult(row + 1))
-          row = vim.fn.foldclosedend(row + 1)
-        else
-          widths[row] = vim.fn.strdisplaywidth(ctx.lines[row - ctx.top + 1] or "")
-          row = row + 1
-        end
+      for row, line in pairs(ctx:read_lines()) do
+        widths[row] = vim.fn.strdisplaywidth(ctx.foldtext[row] or line)
       end
     end)
     return function(row)

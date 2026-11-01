@@ -32,10 +32,21 @@ function M.setup(opts)
       step = vim.bo[ctx.buf].tabstop
     end
     local widths = {}
-    for index, line in ipairs(ctx.lines) do
-      widths[ctx.top + index - 1] = line:find("%S") and scope.width(line, vim.bo[ctx.buf].tabstop) or false
+    for row, line in pairs(ctx:read_lines()) do
+      widths[row] = line:find("%S") and scope.width(line, vim.bo[ctx.buf].tabstop) or false
+    end
+    local top = block and block.first
+    if block then
+      -- Keep the corner anchored to the block, including when its start is off-screen.
+      local header = vim.api.nvim_buf_get_lines(ctx.buf, top - 1, top, false)[1] or ""
+      if header:find("%S") and scope.width(header, vim.bo[ctx.buf].tabstop) <= block.column then
+        top = top + 1
+      end
     end
     return function(row)
+      if ctx.foldtext[row] then
+        return
+      end
       local width = widths[row]
       if width == nil then
         return
@@ -59,7 +70,7 @@ function M.setup(opts)
       if block and row + 1 >= block.first and row + 1 <= block.last then
         local char = opts.char
         if opts.chunk then
-          char = row + 1 == block.first and "╭" or row + 1 == block.last and "╰" or "│"
+          char = row + 1 == top and "╭" or row + 1 == block.last and "╰" or "│"
         end
         -- Never replace source text at a block header's first nonblank cell.
         if width > block.column or widths[row] == false then
@@ -71,7 +82,7 @@ function M.setup(opts)
 end
 
 function M.disable()
-  vim.api.nvim_clear_autocmds({ group = util.group("Indent") })
+  pcall(vim.api.nvim_del_augroup_by_name, "UiToolsIndent")
   render.register("indent", nil)
 end
 

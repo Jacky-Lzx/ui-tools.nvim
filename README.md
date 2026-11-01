@@ -10,10 +10,13 @@ require("ui_tools").setup({
   guide = { columns = { 121 } },
   feedback = { yank = true },
   focus = { width = 100, height = 0.9, dim = true },
+  scrollbar = true,
 })
 ```
 
 With lazy.nvim use `main = "ui_tools"` and the same table as `opts`.
+See [examples/lazy.lua](examples/lazy.lua) for a local checkout spec with Zen,
+Zoom, scope dimming, current-line pulse and optional GitTools markers.
 Disable competing renderers (for example Snacks indent) when enabling a module.
 No colorscheme or icon font is required. Override `UiTools*` highlight groups
 through your colorscheme; plugin defaults use standard highlight links.
@@ -28,7 +31,8 @@ not a language syntax scope and registers no textobjects or navigation keys.
 The closing line dedented to the parent's level lies outside the visual block.
 
 Rendering is per window and limited to visible lines. Special buffers, floating
-windows, diff windows and buffers over `max_lines = 100000` are excluded.
+windows, diff windows and buffers over `max_lines = 100000` or
+`max_bytes = 10485760` (10 MiB) are excluded. Plugin-owned focus windows are included.
 Set `vim.b.ui_tools_disable = true` to opt a buffer out. Each decoration module
 accepts an `exclude` filetype list. Horizontal scrolling is accounted for.
 
@@ -100,7 +104,47 @@ default. Customize `UiToolsDim` and `UiToolsBackdrop` through highlight groups.
 `require("ui_tools.focus").close()` exits either mode; `state()` reports mode,
 focused window and source window. No keys are installed.
 
+## Scrollbar and marker providers
+
+`scrollbar = true` shows a one-cell bar at the right edge of each editing window.
+It overlays the rightmost text cell, never changes buffer content, and is hidden
+when all lines are visible or the window is narrower than `min_width = 20`.
+The bar is not focusable or clickable. Set `hide_if_all_visible = false` to keep
+it visible. Options: `handle = "┃"`, `mark = "•"`, `blend = 30`, `refresh = 30`.
+Positions are projected by buffer line number, including when text wraps or folds.
+
+Diagnostics and search markers are enabled by default (`diagnostics = true`,
+`search = true`). The highest-priority marker wins a cell: diagnostics over
+search, with error diagnostics above warnings. Built-in search uses the last
+search register and respects `hlsearch`, case and magic settings. It matches
+within individual lines, scanning at most `search_limit = 20000` lines, 2 MiB
+and `search_timeout = 10` ms between lines; lines above 4096 bytes are skipped.
+At most 1000 matching lines are retained and cached until text/pattern changes.
+Multiline searches require an external provider.
+
+```lua
+local scrollbar = require("ui_tools.scrollbar")
+local remove = scrollbar.register("bookmarks", function(ctx)
+  -- ctx: buf, win, count, top, bottom, width, height
+  return { { line = 30, end_line = 35, char = "!", hl = "Special", priority = 80 } }
+end)
+scrollbar.refresh() -- call after external data changes
+remove() -- unregister only this registration
+
+-- Optional GitTools integration: reads existing hunks, never loads GitTools.
+local detach_git = require("ui_tools.integrations.git_tools").setup()
+```
+
+Provider line numbers and `end_line` are one-based and inclusive. Markers must
+use a single display cell. Provider errors are isolated in `scrollbar.errors`.
+Registrations survive disable/setup; built-in providers can be replaced by name.
+No polling timer runs: window, edit, diagnostic, command-line and GitTools events
+schedule coalesced refreshes. Hidden tabs and closed windows release their bars.
+Focus mode displays only the focused window's bar.
+
 ## Development
 
 Run `sh tests/run.sh` (Neovim, Python 3 and StyLua required). Tests include an
 attached Neovim UI and inspect its actual redraw grid.
+Use `NVIM_BIN=/path/to/nvim sh tests/run.sh` to test another Neovim release.
+The full behavior and UI suites have been run locally on Neovim 0.11.5 and 0.12.6.

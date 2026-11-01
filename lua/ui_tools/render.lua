@@ -20,7 +20,7 @@ end
 local function context(win, buf, top, bottom)
   local info = vim.fn.getwininfo(win)[1]
   local view = vim.api.nvim_win_call(win, vim.fn.winsaveview)
-  return {
+  local ctx = {
     win = win,
     buf = buf,
     top = top,
@@ -30,12 +30,32 @@ local function context(win, buf, top, bottom)
     textoff = info.textoff,
     leftcol = view.leftcol,
     cursor = vim.api.nvim_win_get_cursor(win),
-    lines = vim.api.nvim_buf_get_lines(buf, top, bottom, false),
   }
+  function ctx:read_lines()
+    if self.lines then
+      return self.lines
+    end
+    self.lines, self.foldtext = {}, {}
+    vim.api.nvim_win_call(win, function()
+      local row = top
+      while row < bottom do
+        self.lines[row] = vim.api.nvim_buf_get_lines(buf, row, row + 1, false)[1] or ""
+        if vim.fn.foldclosed(row + 1) == row + 1 then
+          self.foldtext[row] = vim.fn.foldtextresult(row + 1)
+          row = vim.fn.foldclosedend(row + 1)
+        else
+          row = row + 1
+        end
+      end
+    end)
+    return self.lines
+  end
+  return ctx
 end
 
 function M.register(name, prepare)
   M.sources[name] = prepare
+  M.errors[name] = nil
   if not next(M.sources) then
     vim.api.nvim_set_decoration_provider(ns, {})
   else

@@ -18,6 +18,7 @@ function M.eligible(win, buf, opts)
       vim.bo[buf].filetype
     )
     and vim.api.nvim_buf_line_count(buf) <= (opts.max_lines or 100000)
+    and vim.api.nvim_buf_get_offset(buf, vim.api.nvim_buf_line_count(buf)) <= (opts.max_bytes or 10 * 1024 * 1024)
     and vim.b[buf].ui_tools_disable ~= true
 end
 

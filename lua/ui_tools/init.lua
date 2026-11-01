@@ -1,5 +1,5 @@
 local M = {}
-local modules = { "indent", "statuscolumn", "guide", "feedback", "focus" }
+local modules = { "indent", "statuscolumn", "guide", "feedback", "focus", "scrollbar" }
 
 local function highlights()
   require("ui_tools.util").hl({
@@ -10,6 +10,9 @@ local function highlights()
     UiToolsFlash = "Visual",
     UiToolsDim = "Comment",
     UiToolsBackdrop = "NormalFloat",
+    UiToolsScrollbar = "NormalFloat",
+    UiToolsScrollbarHandle = "Visual",
+    UiToolsSearch = "Search",
   })
 end
 

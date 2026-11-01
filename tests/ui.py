@@ -32,7 +32,7 @@ try:
       tools = require('ui_tools'); tools.setup({indent = true})
     """)
     rendered = screen()
-    assert "│" in rendered and "run()" in rendered, rendered
+    assert "│" in rendered and "╭" in rendered and "╰" in rendered and "run()" in rendered, rendered
     lua("vim.cmd('vsplit'); vim.api.nvim_win_set_cursor(0, {6, 2})")
     assert "done()" in screen()
     ui.request("nvim_input", ["A -- typing<Esc>"])
@@ -119,7 +119,55 @@ try:
     assert lua("return next(require('ui_tools.render').errors) == nil")
     lua("tools.disable()")
     ui.request("nvim_ui_try_resize", [100,30])
-    print("UI: guides, signs, fold clicks, Unicode, feedback, focus typing/resize/restore and dim passed")
+    lua("""
+      vim.cmd('only'); vim.wo.wrap=false
+      local lines = {}; for i=1,300 do lines[i]='line '..i end; lines[150]='target'
+      vim.api.nvim_buf_set_lines(0,0,-1,false,lines); vim.api.nvim_win_set_cursor(0,{1,0})
+      vim.fn.setreg('/','target'); vim.o.hlsearch=true; vim.v.hlsearch=1
+      vim.api.nvim_set_hl(0,'DiagnosticError',{fg='#ff0000'})
+      vim.api.nvim_set_hl(0,'UiToolsSearch',{fg='#abc123'})
+      tools.setup({scrollbar={blend=0}})
+      scrollbar=require('ui_tools.scrollbar'); source=vim.api.nvim_get_current_win()
+      vim.diagnostic.set(vim.api.nvim_create_namespace('ScrollbarUITest'),0,{{lnum=250,col=0,message='error',severity=1}})
+      scrollbar.refresh()
+    """)
+    rendered = screen()
+    search_row = lua("return require('ui_tools.scrollbar').project(150,300,vim.api.nvim_win_get_height(source))-1")
+    error_row = lua("return require('ui_tools.scrollbar').project(251,300,vim.api.nvim_win_get_height(source))-1")
+    assert ui.grid[search_row][99][0] == "•", rendered
+    assert ui.attrs[ui.grid[search_row][99][1]].get('foreground') == 0xabc123, rendered
+    assert ui.attrs[ui.grid[error_row][99][1]].get('foreground') == 0xff0000, rendered
+    assert lua("return vim.deep_equal(vim.api.nvim_win_get_cursor(source),{1,0})")
+    lua("vim.cmd('nohlsearch'); scrollbar.refresh()")
+    screen()
+    assert ui.grid[search_row][99][0] != "•", screen()
+    lua("tools.zen(); vim.wait(80); scrollbar.refresh()")
+    screen()
+    assert lua("return vim.tbl_count(scrollbar.bars)") == 1
+    assert lua("return scrollbar.bars[require('ui_tools.focus').state().win] ~= nil")
+    lua("tools.zen(); vim.cmd('vsplit'); vim.wait(60); scrollbar.refresh()")
+    assert lua("return vim.tbl_count(scrollbar.bars)") == 2
+    lua("vim.cmd('tabnew'); vim.wait(60); scrollbar.refresh()")
+    assert lua("return vim.tbl_count(scrollbar.bars)") == 0
+    lua("tools.disable(); vim.cmd('tabclose'); vim.cmd('only')")
+    # A huge closed fold must not cause off-screen source reads by the renderer.
+    lua("""
+      local lines = {}; for i=1,10000 do lines[i]='  line '..i end
+      vim.api.nvim_buf_set_lines(0,0,-1,false,lines); vim.wo.foldmethod='manual'
+      vim.cmd('2,9999fold'); vim.api.nvim_win_set_cursor(0,{1,0})
+      original_get_lines=vim.api.nvim_buf_get_lines; largest_read=0
+      vim.api.nvim_buf_get_lines=function(buf,first,last,strict)
+        if last>=0 then largest_read=math.max(largest_read,last-first) end
+        return original_get_lines(buf,first,last,strict)
+      end
+      tools.setup({guide={columns={40}}})
+    """)
+    screen()
+    assert lua("return largest_read") <= 1
+    lua("vim.api.nvim_buf_get_lines=original_get_lines; tools.disable()")
+    assert lua("return next(require('ui_tools.render').errors) == nil")
+    assert lua("return next(scrollbar.errors) == nil")
+    print("UI: guides, clicks, typing, focus, scrollbar colors/search/splits/tabs and bounded folded reads passed")
 finally:
     ui.close()
     signal.alarm(0)

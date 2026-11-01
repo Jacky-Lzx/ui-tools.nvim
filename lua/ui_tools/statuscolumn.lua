@@ -1,4 +1,4 @@
-local M = { windows = {}, cache = {}, enabled = false }
+local M = { windows = {}, cache = {}, widths = {}, enabled = false }
 local util = require("ui_tools.util")
 local format = "%!v:lua.require'ui_tools.statuscolumn'.render()"
 local generation = 0
@@ -14,12 +14,41 @@ local function label(text, hl)
   return "%#" .. hl .. "#" .. escape(text) .. "%*"
 end
 
+local function sign_text(sign)
+  -- Neovim pads sign_text to two cells. Numhl/linehl-only marks have no glyph.
+  return sign and (sign.sign_text or ""):gsub("%s+$", "") or ""
+end
+
+local function kinds(entry)
+  return type(entry) == "table" and entry or { entry }
+end
+
+local function measure(rows)
+  local widths = { total = 0 }
+  for index, entry in ipairs(M.options.layout) do
+    if entry ~= "number" then
+      local width = 1
+      for _, row in pairs(rows) do
+        for _, kind in ipairs(kinds(entry)) do
+          if kind == "sign" or kind == "diagnostic" or kind == "git" then
+            width = math.max(width, vim.fn.strdisplaywidth(sign_text(row[kind])))
+          end
+        end
+      end
+      widths[index], widths.total = width, widths.total + width
+    else
+      widths[index] = 0
+    end
+  end
+  return widths
+end
+
 local function release(win)
   local previous = M.windows[win]
   if previous and vim.api.nvim_win_is_valid(win) and vim.wo[win].statuscolumn == format then
     vim.wo[win].statuscolumn = previous
   end
-  M.windows[win], M.cache[win] = nil, nil
+  M.windows[win], M.cache[win], M.widths[win] = nil, nil, nil
 end
 
 function M.refresh()
@@ -35,9 +64,16 @@ function M.refresh()
     local buf = vim.api.nvim_win_get_buf(win)
     if not util.eligible(win, buf, opts) or vim.w[win].ui_tools_statuscolumn_disable then
       release(win)
-    elseif M.windows[win] ~= nil or vim.wo[win].statuscolumn == "" or opts.force then
+    elseif
+      M.windows[win] ~= nil
+      or vim.wo[win].statuscolumn == ""
+      or vim.wo[win].statuscolumn == format
+      or opts.force
+    then
       if M.windows[win] == nil then
-        M.windows[win] = vim.wo[win].statuscolumn
+        -- Splits and per-buffer window options can inherit our format without
+        -- a registry entry. Adopt them, but never restore an orphaned format.
+        M.windows[win] = vim.wo[win].statuscolumn == format and "" or vim.wo[win].statuscolumn
         vim.wo[win].statuscolumn = format
       end
       if vim.wo[win].statuscolumn == format then
@@ -57,7 +93,8 @@ function M.refresh()
           )
         do
           local details, row = mark[4], mark[2] + 1
-          local name = (names[details.ns_id] or "") .. " " .. (details.sign_name or "")
+          local namespace = names[details.ns_id] or ""
+          local name = namespace .. " " .. (details.sign_name or "") .. " " .. (details.sign_hl_group or "")
           local kind = "sign"
           for _, pattern in ipairs(opts.git_patterns) do
             if name:find(pattern, 1, true) then
@@ -65,10 +102,21 @@ function M.refresh()
               break
             end
           end
-          rows[row] = rows[row] or {}
-          local previous = rows[row][kind]
-          if not previous or (details.priority or 0) > (previous.priority or 0) then
-            rows[row][kind] = details
+          if sign_text(details) ~= "" then
+            rows[row] = rows[row] or {}
+            local function retain(slot)
+              local previous = rows[row][slot]
+              if not previous or (details.priority or 0) > (previous.priority or 0) then
+                rows[row][slot] = details
+              end
+            end
+            retain(kind)
+            if
+              namespace:find(".diagnostic.signs", 1, true)
+              or (details.sign_hl_group or ""):match("^DiagnosticSign")
+            then
+              retain("diagnostic")
+            end
           end
         end
         for _, mark in ipairs(vim.fn.getmarklist(buf)) do
@@ -79,12 +127,19 @@ function M.refresh()
           end
         end
         M.cache[win] = rows
+        local widths = measure(rows)
+        local previous = M.widths[win]
+        M.widths[win] = widths
+        if previous and widths.total < previous.total then
+          -- Neovim otherwise retains a previously wider status column.
+          vim.wo[win].statuscolumn = format
+        end
       end
     end
   end
   for win in pairs(M.windows) do
     if not vim.api.nvim_win_is_valid(win) then
-      M.windows[win], M.cache[win] = nil, nil
+      M.windows[win], M.cache[win], M.widths[win] = nil, nil, nil
     end
   end
   util.redraw()
@@ -123,31 +178,30 @@ local function part(kind, win, row)
     )
     return label(string.format("%" .. width .. "d ", value), vim.v.relnum == 0 and "CursorLineNr" or "LineNr")
   end
+end
+
+local function symbol(kind, win, row)
   if kind == "fold" then
-    local text = " "
-    if vim.v.virtnum == 0 and vim.wo[win].foldenable then
-      -- statuscolumn expressions execute in the target window's context.
+    if vim.wo[win].foldenable then
       if vim.fn.foldclosed(vim.v.lnum) == vim.v.lnum then
-        text = M.options.folds.closed
-      elseif vim.fn.foldlevel(vim.v.lnum) > vim.fn.foldlevel(math.max(1, vim.v.lnum - 1)) then
-        text = M.options.folds.open
+        return M.options.folds.closed, "FoldColumn"
+      end
+      local previous = vim.v.lnum > 1 and vim.fn.foldlevel(vim.v.lnum - 1) or 0
+      if vim.fn.foldlevel(vim.v.lnum) > previous then
+        return M.options.folds.open, "FoldColumn"
       end
     end
-    return "%@v:lua.require'ui_tools.statuscolumn'.click@" .. label(text, "FoldColumn") .. "%T"
+  elseif kind == "mark" then
+    if row.mark then
+      return row.mark, "UiToolsMark"
+    end
+  elseif vim.wo[win].signcolumn ~= "no" then
+    local sign = row[kind]
+    local text = sign_text(sign)
+    if text ~= "" then
+      return text, sign.sign_hl_group
+    end
   end
-  if vim.v.virtnum ~= 0 then
-    return "  "
-  end
-  if kind == "mark" then
-    return label((row.mark or " ") .. " ", "UiToolsMark")
-  end
-  local sign = row[kind]
-  if not sign then
-    return "  "
-  end
-  local text = sign.sign_text or " "
-  local width = vim.fn.strdisplaywidth(text)
-  return label(text .. string.rep(" ", math.max(0, 2 - width)), sign.sign_hl_group)
 end
 
 function M.render()
@@ -156,9 +210,31 @@ function M.render()
   end
   local win = vim.g.statusline_winid or vim.api.nvim_get_current_win()
   local row = (M.cache[win] or {})[vim.v.lnum] or {}
+  local widths = M.widths[win] or {}
   local result = {}
-  for _, kind in ipairs(M.options.layout) do
-    result[#result + 1] = part(kind, win, row)
+  for index, entry in ipairs(M.options.layout) do
+    if entry == "number" then
+      result[#result + 1] = part("number", win, row)
+    else
+      local text, hl
+      local choices = kinds(entry)
+      if vim.v.virtnum == 0 then
+        for _, kind in ipairs(choices) do
+          text, hl = symbol(kind, win, row)
+          if text then
+            break
+          end
+        end
+      end
+      text = text or ""
+      text =
+        label(text .. string.rep(" ", math.max(0, (widths[index] or 1) - vim.fn.strdisplaywidth(text))), hl)
+      -- A click function must cover the same column on every rendered row.
+      if vim.tbl_contains(choices, "fold") then
+        text = "%@v:lua.require'ui_tools.statuscolumn'.click@" .. text .. "%T"
+      end
+      result[#result + 1] = text
+    end
   end
   return table.concat(result)
 end
@@ -186,18 +262,23 @@ end
 function M.setup(opts)
   M.disable()
   opts = vim.tbl_deep_extend("force", {
-    layout = { "mark", "sign", "number", "fold", "git" },
+    layout = { { "diagnostic", "sign", "mark" }, "number", { "fold", "git" } },
     git_patterns = { "GitTools", "gitsigns" },
     folds = { open = "▾", closed = "▸" },
     refresh = 30,
     force = false,
   }, opts or {})
   assert(type(opts.refresh) == "number" and opts.refresh >= 0, "statuscolumn.refresh must be nonnegative")
-  for _, kind in ipairs(opts.layout) do
-    assert(
-      vim.tbl_contains({ "mark", "sign", "number", "fold", "git" }, kind),
-      "Unknown statuscolumn item: " .. tostring(kind)
-    )
+  for _, entry in ipairs(opts.layout) do
+    local choices = kinds(entry)
+    assert(#choices > 0, "statuscolumn groups must not be empty")
+    for _, kind in ipairs(choices) do
+      assert(
+        vim.tbl_contains({ "mark", "sign", "diagnostic", "number", "fold", "git" }, kind),
+        "Unknown statuscolumn item: " .. tostring(kind)
+      )
+      assert(type(entry) ~= "table" or kind ~= "number", "number must occupy its own statuscolumn slot")
+    end
   end
   util.cell(opts.folds.open, "folds.open")
   util.cell(opts.folds.closed, "folds.closed")
@@ -214,6 +295,8 @@ function M.setup(opts)
     "DiagnosticChanged",
     "CursorMoved",
     "ModeChanged",
+    "InsertLeave",
+    "CmdlineLeave",
     "OptionSet",
   }, { group = group, callback = schedule })
   vim.api.nvim_create_autocmd("User", { group = group, pattern = "GitToolsUpdate", callback = schedule })
@@ -227,7 +310,7 @@ function M.disable()
   for win in pairs(M.windows) do
     release(win)
   end
-  M.cache = {}
+  M.cache, M.widths = {}, {}
   util.redraw()
 end
 

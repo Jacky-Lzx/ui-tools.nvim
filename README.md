@@ -42,15 +42,26 @@ installed. Renderer errors are available in `require("ui_tools.render").errors`.
 
 ## Status column
 
-`statuscolumn = true` displays `layout = { "mark", "sign", "number", "fold", "git" }`.
+`statuscolumn = true` uses this compact layout:
+
+```lua
+layout = { { "diagnostic", "sign", "mark" }, "number", { "fold", "git" } }
+```
+
+Each nested group shares one slot: the first available item wins. Diagnostic
+signs take precedence over other signs and marks; folds share the right slot
+with Git. Symbol slots occupy one cell and expand for wider glyphs, then shrink
+when those glyphs disappear. Flat entries remain supported for separate slots.
+Number/line highlight-only extmarks never mask a visible sign.
 Reorder or omit entries to change the layout. It respects native `number` and
 `relativenumber`, suppresses duplicate labels on wrapped/virtual lines, selects
-the highest-priority sign per slot, and shows buffer-local letter marks.
+the highest-priority sign of each kind, and shows buffer-local letter marks.
 Fold icons (`folds.open = "▾"`, `folds.closed = "▸"`) respond to left clicks.
 Native `signcolumn`, `numberwidth` and `foldcolumn` control available gutter width;
-use e.g. `signcolumn = "yes:2"`, `foldcolumn = "1"` for a wide layout.
+use `signcolumn = "yes:1"`, `foldcolumn = "0"` for compact gutters. Explicitly
+wider native column settings can still reserve additional space.
 
-Git signs are classified by namespace/sign name using literal `git_patterns =
+Git signs are classified by namespace/sign/highlight name using literal `git_patterns =
 { "GitTools", "gitsigns" }`. This module never requests or computes Git data.
 Sign snapshots refresh on diagnostics, edits, window events and `GitToolsUpdate`,
 coalesced with `refresh = 30` milliseconds. Call
@@ -58,6 +69,8 @@ coalesced with `refresh = 30` milliseconds. Call
 
 Existing nonempty status columns are preserved unless `force = true`. Disable
 restores each window's previous value only while the plugin still owns it.
+Windows that inherit this plugin's format through splits or buffer switching
+are adopted automatically so their diagnostic/sign cache stays active.
 
 ## Column guides and transient feedback
 

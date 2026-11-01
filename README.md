@@ -6,6 +6,7 @@ is explicitly enabled; requiring the plugin does not install UI or mappings.
 ```lua
 require("ui_tools").setup({
   indent = { only_scope = true, chunk = true },
+  statuscolumn = true,
 })
 ```
 
@@ -31,6 +32,25 @@ accepts an `exclude` filetype list. Horizontal scrolling is accounted for.
 `require("ui_tools").toggle("indent")` toggles a module. `disable()` removes
 plugin UI; repeated `setup()` replaces previous configuration. No user keys are
 installed. Renderer errors are available in `require("ui_tools.render").errors`.
+
+## Status column
+
+`statuscolumn = true` displays `layout = { "mark", "sign", "number", "fold", "git" }`.
+Reorder or omit entries to change the layout. It respects native `number` and
+`relativenumber`, suppresses duplicate labels on wrapped/virtual lines, selects
+the highest-priority sign per slot, and shows buffer-local letter marks.
+Fold icons (`folds.open = "▾"`, `folds.closed = "▸"`) respond to left clicks.
+Native `signcolumn`, `numberwidth` and `foldcolumn` control available gutter width;
+use e.g. `signcolumn = "yes:2"`, `foldcolumn = "1"` for a wide layout.
+
+Git signs are classified by namespace/sign name using literal `git_patterns =
+{ "GitTools", "gitsigns" }`. This module never requests or computes Git data.
+Sign snapshots refresh on diagnostics, edits, window events and `GitToolsUpdate`,
+coalesced with `refresh = 30` milliseconds. Call
+`require("ui_tools.statuscolumn").refresh()` after other sign/mark updates.
+
+Existing nonempty status columns are preserved unless `force = true`. Disable
+restores each window's previous value only while the plugin still owns it.
 
 ## Development
 

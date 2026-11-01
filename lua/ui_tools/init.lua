@@ -1,8 +1,12 @@
 local M = {}
-local modules = { "indent" }
+local modules = { "indent", "statuscolumn" }
 
 local function highlights()
-  require("ui_tools.util").hl({ UiToolsIndent = "Whitespace", UiToolsScope = "Special" })
+  require("ui_tools.util").hl({
+    UiToolsIndent = "Whitespace",
+    UiToolsScope = "Special",
+    UiToolsMark = "Special",
+  })
 end
 
 function M.setup(opts)
@@ -37,7 +41,7 @@ function M.toggle(name)
   assert(vim.tbl_contains(modules, name), "Unknown UI module: " .. tostring(name))
   local module = require("ui_tools." .. name)
   -- Each module reports its live enabled state through the shared provider.
-  if require("ui_tools.render").sources[name] then
+  if module.enabled or require("ui_tools.render").sources[name] then
     module.disable()
   else
     local opts = M.options and M.options[name]

@@ -59,12 +59,17 @@ Reorder or omit entries to change the layout. It respects native `number` and
 `relativenumber`, suppresses duplicate labels on wrapped/virtual lines, selects
 the highest-priority sign of each kind, and shows buffer-local letter marks.
 Fold icons (`folds.open = "▾"`, `folds.closed = "▸"`) respond to left clicks.
-Enable `folds = { levels = true }` to display the full native fold-column tree:
-each nesting level gets its own column, with `folds.sep = "│"` on continuation
-lines and Neovim's native mouse actions. The area grows with fold depth, starting
-at `slot_width`; `folds.max_depth = 9` is the native column limit, with deeper
-folds using Neovim's compressed indicators. Window-local fold-column and glyph
-settings are restored on disable unless another owner changed them.
+Enable `folds = { levels = true, columns = 2 }` for a fixed-width folding area.
+`folds.columns` defaults to **2** and accepts integers from 1 to 9. With N columns,
+the first N−1 show their corresponding outer levels; the last column combines
+level N and every deeper fold. With one column, all levels share that column.
+This width is independent of `slot_width`, and deeper folds never widen it.
+Continuation lines use `folds.sep = "│"`. Click a column to operate on its fold;
+the merged last column operates on the innermost visible fold at that line.
+Adjacent folds and folds sharing a start line retain their actual nesting.
+Layered rendering uses LuaJIT's FFI to read Neovim's fold information (validated
+on 0.11.5 and 0.12.6). The window-local native fold-column setting is restored on
+disable unless another owner changed it.
 Native `signcolumn`, `numberwidth` and `foldcolumn` control available gutter width;
 use `signcolumn = "yes:1"`, `foldcolumn = "0"` for compact gutters. Explicitly
 wider native column settings can still reserve additional space.

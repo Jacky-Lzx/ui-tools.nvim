@@ -113,7 +113,7 @@ try:
       old_column=vim.wo.foldcolumn
       old_chars=vim.api.nvim_get_option_value('fillchars',{win=0,scope='local'})
       vim.o.mousetime=0
-      stc.setup({slot_width=2,folds={levels=true}})
+      stc.setup({slot_width=2,folds={levels=true,columns=4}})
       for _,range in ipairs({{2,20},{4,17},{6,14},{8,11}}) do
         vim.cmd(range[1]..','..range[2]..'fold'); vim.cmd('normal! zR')
       end
@@ -153,7 +153,7 @@ try:
       end
       stc.refresh()
     """)
-    assert width() == 8, "Removing deep folds did not restore the two-cell minimum"
+    assert width() == 10, "Configured fold columns changed with nesting depth"
     assert glyph(1, 6) == "▾" and glyph(4, 6) == "▾"
     lua("""
       vim.cmd('normal! zE')
@@ -165,8 +165,41 @@ try:
     assert glyph(1, 6) == "▾" and glyph(1, 7) == "▾" and glyph(1, 8) == "▾"
     click_fold(2, 2)
     assert lua("return vim.fn.foldclosed(2)") == 2
-    lua("vim.cmd('normal! zR'); vim.cmd('vsplit'); stc.refresh()")
-    assert lua("return vim.wo.foldcolumn") == "auto:9"
+    lua("vim.cmd('normal! zR'); stc.setup({slot_width=2,folds={levels=true}})")
+    assert width() == 8, "Default fold area must use exactly two cells"
+    lua("""
+      vim.cmd('normal! zE')
+      for _,range in ipairs({{2,25},{6,20},{6,12}}) do
+        vim.cmd(range[1]..','..range[2]..'fold'); vim.cmd('normal! zR')
+      end
+      stc.refresh()
+    """)
+    assert glyph(1,6) == "▾"
+    assert glyph(5,6) == "│" and glyph(5,7) == "▾", "Deep shared starts leaked into the first-layer column"
+    click_fold(6,2)
+    assert lua("return vim.fn.foldclosedend(6)") == 12
+    assert glyph(5,6) == "│" and glyph(5,7) == "▸"
+    click_fold(6,1)
+    assert lua("return vim.fn.foldclosedend(2)") == 25
+    click_fold(2,1)
+    assert lua("return {vim.fn.foldclosed(2),vim.fn.foldclosed(6)}") == [-1,6]
+    lua("""
+      vim.cmd('normal! zE')
+      for _,range in ipairs({{2,25},{4,22},{6,19},{8,16}}) do
+        vim.cmd(range[1]..','..range[2]..'fold'); vim.cmd('normal! zR')
+      end
+      stc.refresh()
+    """)
+    assert width() == 8
+    assert glyph(3,6) == "│" and glyph(3,7) == "▾"
+    assert glyph(5,6) == "│" and glyph(5,7) == "▾"
+    assert glyph(7,6) == "│" and glyph(7,7) == "▾"
+    lua("stc.setup({slot_width=2,folds={levels=true,columns=3}})")
+    assert width() == 9 and glyph(3,7) == "▾" and glyph(5,8) == "▾" and glyph(7,8) == "▾"
+    lua("stc.setup({slot_width=2,folds={levels=true,columns=1}})")
+    assert width() == 7 and glyph(1,6) == "▾" and glyph(3,6) == "▾" and glyph(7,6) == "▾"
+    lua("vim.cmd('vsplit'); stc.refresh()")
+    assert lua("return vim.wo.foldcolumn") == "0"
     lua("require('ui_tools').disable()")
     assert lua("return vim.wo.foldcolumn == old_column")
     assert lua("return vim.api.nvim_get_option_value('fillchars',{win=0,scope='local'}) == old_chars")

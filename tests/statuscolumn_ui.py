@@ -59,6 +59,21 @@ try:
     assert glyph(1) == "E", "A non-diagnostic sign/mark hid the diagnostic"
     assert glyph(2) == "W" and glyph(2, 5) == "+"
     assert width() == 6
+    lua("stc.setup({layout={'diagnostic',{'sign','mark'},'number','fold'}})")
+    assert width() == 7 and glyph(1) == "E" and glyph(1, 1) == "X", "Independent signs did not coexist"
+    assert glyph(2) == "W" and glyph(2, 1) == " ", "Diagnostic was duplicated in the second slot"
+    # A high-priority diagnostic must not hide a lower-priority ordinary sign.
+    lua("vim.api.nvim_buf_set_extmark(0,competitor,2,0,{sign_text='B',sign_hl_group='Special',priority=1}); stc.refresh()")
+    assert glyph(2) == "W" and glyph(2, 1) == "B"
+    lua("vim.api.nvim_buf_clear_namespace(0,competitor,0,-1); stc.refresh()")
+    assert glyph(1) == "E" and glyph(1, 1) == "a", "Diagnostic and mark did not coexist"
+    # A layout with no diagnostic slot retains the broad sign fallback.
+    lua("stc.setup({layout={'sign','number','fold'}})")
+    assert glyph(1) == "E"
+    lua("""
+      vim.api.nvim_buf_set_extmark(0,competitor,1,0,{sign_text='X',sign_hl_group='Special',priority=900})
+      stc.setup({})
+    """)
     lua("vim.cmd('vsplit'); stc.refresh()")
     frame()
     assert lua("return stc.windows[vim.api.nvim_get_current_win()] ~= nil"), "Inherited column was not adopted"

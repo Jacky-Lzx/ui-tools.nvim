@@ -57,6 +57,18 @@ the shared diagnostic/mark and fold/Git slots; line number width stays native.
 Set `separator = " "` for one cell of breathing room before the code, or use
 `"│"` for a divider. It uses `UiToolsStatusSeparator` and is not a fold button.
 Line numbers use `UiToolsLineNr` and `UiToolsCursorLineNr`.
+To give diagnostics and other symbols separate columns, use:
+
+```lua
+slot_width = 1,
+layout = { "diagnostic", { "sign", "mark" }, "number", "fold" },
+```
+
+The first column shows the highest-priority diagnostic. The second shows the
+highest-priority other sign, falling back to a letter mark. When the layout
+includes `"diagnostic"`, `"sign"` excludes diagnostics so they cannot appear
+twice or hide another sign. Without `"diagnostic"`, `"sign"` includes diagnostics
+for compatibility. Each slot can expand for glyphs wider than one display cell.
 Number/line highlight-only extmarks never mask a visible sign.
 Reorder or omit entries to change the layout. It respects native `number` and
 `relativenumber`, suppresses duplicate labels on wrapped/virtual lines, selects

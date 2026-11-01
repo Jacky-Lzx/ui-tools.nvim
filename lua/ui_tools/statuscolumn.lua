@@ -12,6 +12,7 @@ local util = require("ui_tools.util")
 local format = "%!v:lua.require'ui_tools.statuscolumn'.render()"
 local generation = 0
 local queued = false
+local has_diagnostic_slot = false
 
 local function escape(text)
   return (text or ""):gsub("%%", "%%%%"):gsub("[\r\n]", " ")
@@ -30,6 +31,13 @@ end
 
 local function kinds(entry)
   return type(entry) == "table" and entry or { entry }
+end
+
+local function sign_for(row, kind)
+  if kind == "sign" and has_diagnostic_slot then
+    return row.other_sign
+  end
+  return row[kind]
 end
 
 local function prepare_folds(win, inherited)
@@ -56,7 +64,7 @@ local function measure(rows)
         for _, row in pairs(rows) do
           for _, kind in ipairs(kinds(entry)) do
             if kind == "sign" or kind == "diagnostic" or kind == "git" then
-              width = math.max(width, vim.fn.strdisplaywidth(sign_text(row[kind])))
+              width = math.max(width, vim.fn.strdisplaywidth(sign_text(sign_for(row, kind))))
             end
           end
         end
@@ -183,6 +191,8 @@ function M.refresh()
               or (details.sign_hl_group or ""):match("^DiagnosticSign")
             then
               retain("diagnostic")
+            elseif kind == "sign" then
+              retain("other_sign")
             end
           end
         end
@@ -293,7 +303,7 @@ local function symbol(kind, win, row)
       return row.mark, "UiToolsMark"
     end
   elseif vim.wo[win].signcolumn ~= "no" then
-    local sign = row[kind]
+    local sign = sign_for(row, kind)
     local text = sign_text(sign)
     if text ~= "" then
       return text, sign.sign_hl_group
@@ -455,6 +465,7 @@ function M.setup(opts)
     type(opts.slot_width) == "number" and opts.slot_width >= 1 and opts.slot_width % 1 == 0,
     "statuscolumn.slot_width must be a positive integer"
   )
+  has_diagnostic_slot = false
   for _, entry in ipairs(opts.layout) do
     local choices = kinds(entry)
     assert(#choices > 0, "statuscolumn groups must not be empty")
@@ -464,6 +475,7 @@ function M.setup(opts)
         "Unknown statuscolumn item: " .. tostring(kind)
       )
       assert(type(entry) ~= "table" or kind ~= "number", "number must occupy its own statuscolumn slot")
+      has_diagnostic_slot = has_diagnostic_slot or kind == "diagnostic"
     end
   end
   util.cell(opts.folds.open, "folds.open")

@@ -198,6 +198,13 @@ try:
     assert width() == 9 and glyph(3,7) == "▾" and glyph(5,8) == "▾" and glyph(7,8) == "▾"
     lua("stc.setup({slot_width=2,folds={levels=true,columns=1}})")
     assert width() == 7 and glyph(1,6) == "▾" and glyph(3,6) == "▾" and glyph(7,6) == "▾"
+    lua("stc.setup({slot_width=2,separator='│',folds={levels=true,columns=2}})")
+    assert width() == 9 and glyph(0,8) == "│" and glyph(1,8) == "│"
+    assert glyph(0,9) == "l", "Divider displaced or hid the source text"
+    ui.request("nvim_input_mouse", ["left", "press", "", 0, 1, 8])
+    ui.request("nvim_input_mouse", ["left", "release", "", 0, 1, 8])
+    lua("vim.wait(80)")
+    assert lua("return vim.fn.foldclosed(2)") == -1, "Divider click toggled a fold"
     lua("vim.cmd('vsplit'); stc.refresh()")
     assert lua("return vim.wo.foldcolumn") == "0"
     lua("require('ui_tools').disable()")

@@ -1,5 +1,13 @@
-local M =
-  { windows = {}, cache = {}, widths = {}, fold_options = {}, fold_widths = {}, views = {}, enabled = false }
+local M = {
+  windows = {},
+  cache = {},
+  widths = {},
+  fold_options = {},
+  fold_widths = {},
+  views = {},
+  scopes = {},
+  enabled = false,
+}
 local util = require("ui_tools.util")
 local format = "%!v:lua.require'ui_tools.statuscolumn'.render()"
 local generation = 0
@@ -75,6 +83,7 @@ local function release(win)
   M.windows[win], M.cache[win], M.widths[win] = nil, nil, nil
   M.fold_options[win], M.fold_widths[win] = nil, nil
   M.views[win] = nil
+  M.scopes[win] = nil
 end
 
 function M.refresh()
@@ -82,7 +91,21 @@ function M.refresh()
     return
   end
   local opts = M.options
-  local names = {}
+  local names, number_groups = {}, {}
+  local function git_number_groups(sign)
+    local source = sign.number_hl_group or sign.sign_hl_group
+    if not opts.git_numbers or not source then
+      return
+    end
+    if not number_groups[source] then
+      local color = vim.api.nvim_get_hl(0, { name = source, link = false }).fg
+      local name = "UiToolsGitNumber" .. source:gsub("[^%w_]", "_")
+      vim.api.nvim_set_hl(0, name, { fg = color })
+      vim.api.nvim_set_hl(0, name .. "Current", { fg = color, bold = true })
+      number_groups[source] = { name, name .. "Current" }
+    end
+    return number_groups[source]
+  end
   for name, id in pairs(vim.api.nvim_get_namespaces()) do
     names[id] = name
   end
@@ -109,6 +132,15 @@ function M.refresh()
           return { vim.fn.line("w0"), vim.fn.line("w$") }
         end))
         M.views[win] = { first, last }
+        M.scopes[win] = nil
+        if opts.folds.levels and opts.folds.scope and vim.wo[win].foldenable then
+          local reader = require("ui_tools.fold_info")
+          local line = vim.api.nvim_win_get_cursor(win)[1]
+          local fold = reader.get(win, line)
+          if fold and fold.level > 0 then
+            M.scopes[win] = { start = reader.header(win, line, fold.level), level = fold.level }
+          end
+        end
         local rows = {}
         for _, mark in
           ipairs(
@@ -123,7 +155,13 @@ function M.refresh()
         do
           local details, row = mark[4], mark[2] + 1
           local namespace = names[details.ns_id] or ""
-          local name = namespace .. " " .. (details.sign_name or "") .. " " .. (details.sign_hl_group or "")
+          local name = namespace
+            .. " "
+            .. (details.sign_name or "")
+            .. " "
+            .. (details.sign_hl_group or "")
+            .. " "
+            .. (details.number_hl_group or "")
           local kind = "sign"
           for _, pattern in ipairs(opts.git_patterns) do
             if name:find(pattern, 1, true) then
@@ -131,7 +169,7 @@ function M.refresh()
               break
             end
           end
-          if sign_text(details) ~= "" then
+          if sign_text(details) ~= "" or (kind == "git" and details.number_hl_group) then
             rows[row] = rows[row] or {}
             local function retain(slot)
               local previous = rows[row][slot]
@@ -146,6 +184,11 @@ function M.refresh()
             then
               retain("diagnostic")
             end
+          end
+        end
+        for _, row in pairs(rows) do
+          if row.git then
+            row.git_numbers = git_number_groups(row.git)
           end
         end
         for _, mark in ipairs(vim.fn.getmarklist(buf)) do
@@ -171,6 +214,7 @@ function M.refresh()
       M.windows[win], M.cache[win], M.widths[win] = nil, nil, nil
       M.fold_options[win], M.fold_widths[win] = nil, nil
       M.views[win] = nil
+      M.scopes[win] = nil
     end
   end
   util.redraw()
@@ -226,7 +270,10 @@ local function part(kind, win, row)
       vim.wo[win].numberwidth - 1,
       #tostring(vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(win)))
     )
-    return label(string.format("%" .. width .. "d ", value), vim.v.relnum == 0 and "CursorLineNr" or "LineNr")
+    local current = vim.v.relnum == 0
+    local hl = row.git_numbers and row.git_numbers[current and 2 or 1]
+      or (current and "UiToolsCursorLineNr" or "UiToolsLineNr")
+    return label(string.format("%" .. width .. "d ", value), hl)
   end
 end
 
@@ -259,7 +306,8 @@ local function fold_cells(win, line)
   if not fold or fold.level == 0 then
     return
   end
-  local opts, cells = M.options.folds, {}
+  local opts, cells, rendered = M.options.folds, {}, {}
+  local scope = M.scopes[win]
   for column = 1, opts.columns do
     local char = " "
     if fold.level >= column then
@@ -272,8 +320,18 @@ local function fold_cells(win, line)
       end
     end
     cells[column] = char
+    local hl = "FoldColumn"
+    if char == opts.sep then
+      hl = "UiToolsFoldSeparator"
+      if scope and column == math.min(scope.level, opts.columns) and fold.level >= scope.level then
+        if require("ui_tools.fold_info").header(win, line, scope.level) == scope.start then
+          hl = "UiToolsFoldScope"
+        end
+      end
+    end
+    rendered[column] = label(char, hl)
   end
-  return table.concat(cells)
+  return table.concat(cells), table.concat(rendered)
 end
 
 function M.render()
@@ -288,13 +346,13 @@ function M.render()
     if entry == "number" then
       result[#result + 1] = part("number", win, row)
     else
-      local text, hl
+      local text, hl, rendered
       local choices = kinds(entry)
       if vim.v.virtnum == 0 then
         for _, kind in ipairs(choices) do
           if kind == "fold" and M.options.folds.levels then
             if vim.wo[win].foldenable then
-              text = fold_cells(win, vim.v.lnum)
+              text, rendered = fold_cells(win, vim.v.lnum)
             end
             if text then
               hl = "FoldColumn"
@@ -312,7 +370,7 @@ function M.render()
       if vim.fn.strdisplaywidth(text) > width then
         text = ""
       end
-      text = label(text .. string.rep(" ", math.max(0, width - vim.fn.strdisplaywidth(text))), hl)
+      text = rendered or label(text .. string.rep(" ", math.max(0, width - vim.fn.strdisplaywidth(text))), hl)
       -- Keep the same click handler/region on every row, including empty rows.
       if vim.tbl_contains(choices, "fold") then
         local id = M.options.folds.levels and tostring(index) or ""
@@ -320,6 +378,9 @@ function M.render()
       end
       result[#result + 1] = text
     end
+  end
+  if M.options.separator then
+    result[#result + 1] = label(M.options.separator, "UiToolsStatusSeparator")
   end
   return table.concat(result)
 end
@@ -378,12 +439,18 @@ function M.setup(opts)
   opts = vim.tbl_deep_extend("force", {
     layout = { { "diagnostic", "sign", "mark" }, "number", { "fold", "git" } },
     slot_width = 1,
+    separator = false,
+    git_numbers = false,
     git_patterns = { "GitTools", "gitsigns" },
-    folds = { open = "▾", closed = "▸", sep = "│", levels = false, columns = 2 },
+    folds = { open = "▾", closed = "▸", sep = "│", levels = false, columns = 2, scope = false },
     refresh = 30,
     force = false,
   }, opts or {})
   assert(type(opts.refresh) == "number" and opts.refresh >= 0, "statuscolumn.refresh must be nonnegative")
+  assert(type(opts.git_numbers) == "boolean", "statuscolumn.git_numbers must be boolean")
+  if opts.separator ~= false then
+    util.cell(opts.separator, "statuscolumn.separator")
+  end
   assert(
     type(opts.slot_width) == "number" and opts.slot_width >= 1 and opts.slot_width % 1 == 0,
     "statuscolumn.slot_width must be a positive integer"
@@ -403,6 +470,7 @@ function M.setup(opts)
   util.cell(opts.folds.closed, "folds.closed")
   util.cell(opts.folds.sep, "folds.sep")
   assert(type(opts.folds.levels) == "boolean", "folds.levels must be boolean")
+  assert(type(opts.folds.scope) == "boolean", "folds.scope must be boolean")
   assert(
     type(opts.folds.columns) == "number"
       and opts.folds.columns >= 1
@@ -413,7 +481,14 @@ function M.setup(opts)
   if opts.folds.levels then
     require("ui_tools.fold_info").setup()
   end
-  util.hl({ UiToolsMark = "Special" })
+  util.hl({
+    UiToolsMark = "Special",
+    UiToolsStatusSeparator = "WinSeparator",
+    UiToolsLineNr = "LineNr",
+    UiToolsCursorLineNr = "CursorLineNr",
+    UiToolsFoldSeparator = "LineNr",
+    UiToolsFoldScope = "FoldColumn",
+  })
   M.options, M.enabled = opts, true
   local group = util.group("Statuscolumn")
   vim.api.nvim_create_autocmd("SafeState", { group = group, callback = folds_changed })
@@ -426,6 +501,7 @@ function M.setup(opts)
     "TextChangedI",
     "DiagnosticChanged",
     "CursorMoved",
+    "CursorMovedI",
     "ModeChanged",
     "InsertLeave",
     "CmdlineLeave",

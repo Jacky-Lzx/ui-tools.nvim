@@ -54,6 +54,9 @@ with Git. Symbol slots occupy one cell and expand for wider glyphs, then shrink
 when those glyphs disappear. Flat entries remain supported for separate slots.
 Set `slot_width = 2` to reserve two display cells for each symbol slot, including
 the shared diagnostic/mark and fold/Git slots; line number width stays native.
+Set `separator = " "` for one cell of breathing room before the code, or use
+`"│"` for a divider. It uses `UiToolsStatusSeparator` and is not a fold button.
+Line numbers use `UiToolsLineNr` and `UiToolsCursorLineNr`.
 Number/line highlight-only extmarks never mask a visible sign.
 Reorder or omit entries to change the layout. It respects native `number` and
 `relativenumber`, suppresses duplicate labels on wrapped/virtual lines, selects
@@ -66,6 +69,9 @@ level N and every deeper fold. With one column, all levels share that column.
 This width is independent of `slot_width`, and deeper folds never widen it.
 Continuation lines use `folds.sep = "│"`. Click a column to operate on its fold;
 the merged last column operates on the innermost visible fold at that line.
+They use `UiToolsFoldSeparator`; enable `folds.scope = true` to highlight the
+continuation of the cursor's innermost fold with `UiToolsFoldScope`. Arrows retain
+`FoldColumn`. Scope highlighting is independent in each split.
 Adjacent folds and folds sharing a start line retain their actual nesting.
 Layered rendering uses LuaJIT's FFI to read Neovim's fold information (validated
 on 0.11.5 and 0.12.6). The window-local native fold-column setting is restored on
@@ -76,6 +82,22 @@ wider native column settings can still reserve additional space.
 
 Git signs are classified by namespace/sign/highlight name using literal `git_patterns =
 { "GitTools", "gitsigns" }`. This module never requests or computes Git data.
+Enable `git_numbers = true` to color line numbers using Git extmarks, including
+number-highlight-only marks. The provider's number highlight takes precedence
+over its sign highlight; the current line also stays bold. Use foreground-only
+provider highlights for a transparent gutter. Remove `"git"` from the layout to
+display changes solely through numbers:
+
+```lua
+statuscolumn = {
+  slot_width = 2,
+  separator = " ",
+  git_numbers = true,
+  folds = { levels = true, columns = 2, scope = true },
+  layout = { { "diagnostic", "sign", "mark" }, "number", "fold" },
+}
+```
+
 Sign snapshots refresh on diagnostics, edits, window events and `GitToolsUpdate`,
 coalesced with `refresh = 30` milliseconds. Call
 `require("ui_tools.statuscolumn").refresh()` after other sign/mark updates.

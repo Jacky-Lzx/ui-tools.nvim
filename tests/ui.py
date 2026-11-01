@@ -65,7 +65,34 @@ try:
     assert "run()" in screen()
     lua("tools.disable()")
     assert lua("return vim.wo.statuscolumn") == ""
-    print("UI: visible indentation, independent splits, typing and cleanup passed")
+    lua("""
+      vim.wo.number=false; vim.wo.relativenumber=false; vim.wo.signcolumn='no'; vim.wo.foldcolumn='0'
+      vim.wo.wrap=false; vim.cmd('normal! zE'); vim.diagnostic.reset()
+      vim.api.nvim_buf_set_lines(0,0,-1,false,{'a','中文',string.rep('x',100)})
+      tools.setup({guide={columns={9},char='┆'}})
+      vim.api.nvim_win_set_cursor(0,{1,0})
+    """)
+    screen()
+    assert ui.grid[0][8][0] == "┆", screen()
+    assert ui.grid[1][8][0] == "┆", screen()
+    assert ui.grid[2][8][0] == "x", screen()
+    lua("""
+      vim.o.sidescrolloff=0; vim.api.nvim_win_set_cursor(0,{3,30})
+      vim.fn.winrestview({lnum=3,col=30,topline=1,leftcol=5})
+    """)
+    screen()
+    assert ui.grid[0][3][0] == "┆", screen()
+    lua("""
+      vim.api.nvim_set_hl(0,'UiToolsFlash',{bg='#ff0000'})
+      flash = tools.flash({line=1,timeout=0})
+    """)
+    screen()
+    assert ui.attrs[ui.grid[0][0][1]].get('background') == 0xff0000
+    lua("flash:cancel(); tools.disable()")
+    assert "┆" not in screen()
+    assert ui.attrs[ui.grid[0][0][1]].get('background') != 0xff0000
+    assert lua("return next(require('ui_tools.render').errors) == nil")
+    print("UI: indentation, splits, typing, sign layout, fold clicks, Unicode/scroll guides and feedback passed")
 finally:
     ui.close()
     signal.alarm(0)

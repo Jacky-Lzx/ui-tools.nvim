@@ -7,6 +7,8 @@ is explicitly enabled; requiring the plugin does not install UI or mappings.
 require("ui_tools").setup({
   indent = { only_scope = true, chunk = true },
   statuscolumn = true,
+  guide = { columns = { 121 } },
+  feedback = { yank = true },
 })
 ```
 
@@ -51,6 +53,28 @@ coalesced with `refresh = 30` milliseconds. Call
 
 Existing nonempty status columns are preserved unless `force = true`. Disable
 restores each window's previous value only while the plugin still owns it.
+
+## Column guides and transient feedback
+
+`guide = { columns = { 81, 121 }, char = "│" }` draws guides only in empty
+space beyond text. Columns are one-based display cells, accounting for tabs,
+wide characters, horizontal scroll and folded text. Source text is never hidden.
+
+`feedback = { yank = true, timeout = 200 }` optionally highlights yanked text.
+The API works without enabling automatic yank feedback:
+
+```lua
+local ui = require("ui_tools")
+ui.pulse() -- current line for 200 ms; map this to your own key
+local flash = ui.flash({ buf = 0, line = 3, count = 2, timeout = 400 })
+-- Zero-based rows and byte columns, with an exclusive end (Neovim convention):
+ui.flash({ range = { 0, 0, 0, 6 }, hl = "Search" })
+flash:cancel() -- idempotent; does not affect overlapping flashes
+```
+
+`timeout = 0` lasts until cancellation, buffer unload or plugin disable. A handle
+also has `is_active()`. Text is never changed; each flash tracks edits through
+extmarks. Line flashes affect all windows displaying the target buffer.
 
 ## Development
 

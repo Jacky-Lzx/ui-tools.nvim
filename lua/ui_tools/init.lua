@@ -1,11 +1,13 @@
 local M = {}
-local modules = { "indent", "statuscolumn" }
+local modules = { "indent", "statuscolumn", "guide", "feedback" }
 
 local function highlights()
   require("ui_tools.util").hl({
     UiToolsIndent = "Whitespace",
     UiToolsScope = "Special",
     UiToolsMark = "Special",
+    UiToolsGuide = "NonText",
+    UiToolsFlash = "Visual",
   })
 end
 
@@ -47,6 +49,14 @@ function M.toggle(name)
     local opts = M.options and M.options[name]
     module.setup(type(opts) == "table" and opts or {})
   end
+end
+
+function M.flash(opts)
+  return require("ui_tools.feedback").flash(opts)
+end
+
+function M.pulse(opts)
+  return M.flash(opts)
 end
 
 return M

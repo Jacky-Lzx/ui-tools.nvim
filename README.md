@@ -52,6 +52,8 @@ Each nested group shares one slot: the first available item wins. Diagnostic
 signs take precedence over other signs and marks; folds share the right slot
 with Git. Symbol slots occupy one cell and expand for wider glyphs, then shrink
 when those glyphs disappear. Flat entries remain supported for separate slots.
+Set `slot_width = 2` to reserve two display cells for each symbol slot, including
+the shared diagnostic/mark and fold/Git slots; line number width stays native.
 Number/line highlight-only extmarks never mask a visible sign.
 Reorder or omit entries to change the layout. It respects native `number` and
 `relativenumber`, suppresses duplicate labels on wrapped/virtual lines, selects

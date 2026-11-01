@@ -99,6 +99,15 @@ try:
       vim.wait(80)
     """)
     assert glyph(1) == "E", "New viewport lost its diagnostic signs"
+    lua("stc.setup({slot_width=2})")
+    assert width() == 8 and glyph(1) == "E" and glyph(1, 1) == " "
+    lua("vim.api.nvim_win_set_cursor(0,{1,0}); vim.cmd('normal! zt'); vim.cmd('1,4fold'); stc.refresh()")
+    assert glyph(0, 6) == "▸" and glyph(0, 7) == " "
+    # The padding cell is part of the same clickable fold slot.
+    ui.request("nvim_input_mouse", ["left", "press", "", 0, 0, 7])
+    ui.request("nvim_input_mouse", ["left", "release", "", 0, 0, 7])
+    lua("vim.wait(80)")
+    assert lua("return vim.fn.foldclosed(1)") == -1
     lua("require('ui_tools').disable()")
     print("status column UI: compact slots, diagnostics, numhl isolation, wide signs, shrink, clicks and scrolling passed")
 finally:

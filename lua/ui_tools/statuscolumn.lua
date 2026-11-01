@@ -27,7 +27,7 @@ local function measure(rows)
   local widths = { total = 0 }
   for index, entry in ipairs(M.options.layout) do
     if entry ~= "number" then
-      local width = 1
+      local width = M.options.slot_width
       for _, row in pairs(rows) do
         for _, kind in ipairs(kinds(entry)) do
           if kind == "sign" or kind == "diagnostic" or kind == "git" then
@@ -227,8 +227,14 @@ function M.render()
         end
       end
       text = text or ""
-      text =
-        label(text .. string.rep(" ", math.max(0, (widths[index] or 1) - vim.fn.strdisplaywidth(text))), hl)
+      text = label(
+        text
+          .. string.rep(
+            " ",
+            math.max(0, (widths[index] or M.options.slot_width) - vim.fn.strdisplaywidth(text))
+          ),
+        hl
+      )
       -- A click function must cover the same column on every rendered row.
       if vim.tbl_contains(choices, "fold") then
         text = "%@v:lua.require'ui_tools.statuscolumn'.click@" .. text .. "%T"
@@ -263,12 +269,17 @@ function M.setup(opts)
   M.disable()
   opts = vim.tbl_deep_extend("force", {
     layout = { { "diagnostic", "sign", "mark" }, "number", { "fold", "git" } },
+    slot_width = 1,
     git_patterns = { "GitTools", "gitsigns" },
     folds = { open = "▾", closed = "▸" },
     refresh = 30,
     force = false,
   }, opts or {})
   assert(type(opts.refresh) == "number" and opts.refresh >= 0, "statuscolumn.refresh must be nonnegative")
+  assert(
+    type(opts.slot_width) == "number" and opts.slot_width >= 1 and opts.slot_width % 1 == 0,
+    "statuscolumn.slot_width must be a positive integer"
+  )
   for _, entry in ipairs(opts.layout) do
     local choices = kinds(entry)
     assert(#choices > 0, "statuscolumn groups must not be empty")

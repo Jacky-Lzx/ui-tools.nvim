@@ -167,6 +167,13 @@ local function draw(ctx)
     bar.geometry = geometry
   end
   local marks = collect(ctx)
+  if M.options.cursor then
+    -- The cursor stays visible even when another marker projects to this cell.
+    marks[M.project(ctx.cursor, ctx.count, ctx.height)] = {
+      char = M.options.cursor_char,
+      hl = "UiToolsScrollbarCursor",
+    }
+  end
   local first = M.project(ctx.top, ctx.count, ctx.height)
   local last = M.project(ctx.bottom, ctx.count, ctx.height)
   local lines, colors, styles = {}, {}, {}
@@ -218,6 +225,7 @@ function M.refresh()
           count = count,
           top = info.topline,
           bottom = info.botline,
+          cursor = vim.api.nvim_win_get_cursor(win)[1],
         })
       end
     end
@@ -270,6 +278,8 @@ function M.setup(opts)
   opts = vim.tbl_deep_extend("force", {
     handle = "┃",
     mark = "•",
+    cursor = true,
+    cursor_char = "●",
     blend = 30,
     diagnostics = true,
     search = true,
@@ -281,6 +291,8 @@ function M.setup(opts)
   }, opts or {})
   util.cell(opts.handle, "scrollbar.handle")
   util.cell(opts.mark, "scrollbar.mark")
+  assert(type(opts.cursor) == "boolean", "scrollbar.cursor must be boolean")
+  util.cell(opts.cursor_char, "scrollbar.cursor_char")
   assert(
     type(opts.blend) == "number" and opts.blend >= 0 and opts.blend <= 100,
     "scrollbar.blend must be 0..100"
@@ -292,7 +304,12 @@ function M.setup(opts)
     )
   end
   M.options, M.enabled = opts, true
-  util.hl({ UiToolsScrollbar = "NormalFloat", UiToolsScrollbarHandle = "Visual", UiToolsSearch = "Search" })
+  util.hl({
+    UiToolsScrollbar = "NormalFloat",
+    UiToolsScrollbarHandle = "Visual",
+    UiToolsScrollbarCursor = "Special",
+    UiToolsSearch = "Search",
+  })
   local group = util.group("Scrollbar")
   vim.api.nvim_create_autocmd({
     "BufWinEnter",

@@ -35,7 +35,7 @@ try:
       vim.api.nvim_set_hl(0,'MarkerTest',{fg='#00ffff'})
       local lines={}; for i=1,300 do lines[i]='line '..i end
       vim.api.nvim_buf_set_lines(0,0,-1,false,lines)
-      require('ui_tools').setup({scrollbar={handle=' ',blend=100,search=false,diagnostics=false}})
+      require('ui_tools').setup({scrollbar={handle=' ',blend=100,search=false,diagnostics=false,cursor=false}})
       bar=require('ui_tools.scrollbar')
     """)
     assert background(0) == 0x000000, cell(0)
@@ -83,7 +83,7 @@ try:
     lua("""
       vim.api.nvim_set_hl(0,'UiToolsScrollbar',{bg='NONE',blend=100})
       vim.api.nvim_set_hl(0,'UiToolsScrollbarHandle',{bg='#000000',blend=0})
-      require('ui_tools').setup({scrollbar={handle=' ',blend=100,search=false,diagnostics=false}})
+      require('ui_tools').setup({scrollbar={handle=' ',blend=100,search=false,diagnostics=false,cursor=false}})
     """)
     assert background(5) == transparent_background, cell(5)
     lua("require('ui_tools').disable()")

@@ -12,6 +12,7 @@ local function highlights()
     UiToolsBackdrop = "NormalFloat",
     UiToolsScrollbar = "NormalFloat",
     UiToolsScrollbarHandle = "Visual",
+    UiToolsScrollbarCursor = "Special",
     UiToolsSearch = "Search",
   })
 end

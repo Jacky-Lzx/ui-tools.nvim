@@ -113,6 +113,12 @@ The bar is not focusable or clickable. Set `hide_if_all_visible = false` to keep
 it visible. Options: `handle = "┃"`, `mark = "•"`, `blend = 30`, `refresh = 30`.
 Positions are projected by buffer line number, including when text wraps or folds.
 
+The cursor is shown as `●` on each window's bar and follows movement in Normal
+and Insert mode. It takes precedence when sharing a cell with another marker.
+Set `cursor = false` to hide it or change `cursor_char` to another single-cell
+symbol. Its foreground uses `UiToolsScrollbarCursor`; the handle background is
+preserved underneath it.
+
 For an opaque black handle on a transparent track, set `handle = " "`,
 `blend = 100`, and define these highlights in your colorscheme callback:
 
@@ -135,7 +141,7 @@ Multiline searches require an external provider.
 ```lua
 local scrollbar = require("ui_tools.scrollbar")
 local remove = scrollbar.register("bookmarks", function(ctx)
-  -- ctx: buf, win, count, top, bottom, width, height
+  -- ctx: buf, win, count, top, bottom, cursor (one-based line), width, height
   return { { line = 30, end_line = 35, char = "!", hl = "Special", priority = 80 } }
 end)
 scrollbar.refresh() -- call after external data changes

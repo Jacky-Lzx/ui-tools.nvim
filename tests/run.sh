@@ -11,4 +11,5 @@ for suite in tests/indent.lua tests/statuscolumn.lua tests/feedback.lua tests/fo
 done
 python3 tests/ui.py
 python3 tests/scrollbar_ui.py
+python3 tests/scrollbar_cursor_ui.py
 stylua --check lua tests examples

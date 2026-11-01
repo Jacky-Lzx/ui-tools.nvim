@@ -11,6 +11,7 @@ require("ui_tools").setup({
   feedback = { yank = true },
   focus = { width = 100, height = 0.9, dim = true },
   scrollbar = true,
+  context_menu = true,
 })
 ```
 
@@ -37,8 +38,115 @@ Set `vim.b.ui_tools_disable = true` to opt a buffer out. Each decoration module
 accepts an `exclude` filetype list. Horizontal scrolling is accounted for.
 
 `require("ui_tools").toggle("indent")` toggles a module. `disable()` removes
-plugin UI; repeated `setup()` replaces previous configuration. No user keys are
-installed. Renderer errors are available in `require("ui_tools.render").errors`.
+plugin UI; repeated `setup()` replaces previous configuration. Only the opt-in
+context menu installs mouse mappings. Renderer errors are available in
+`require("ui_tools.render").errors`.
+
+## Context menu
+
+`context_menu = true` enables right-click menus in Normal, Visual and Insert mode.
+Enable native mouse input with `vim.opt.mouse = "a"` if it is disabled. The menu
+targets the clicked window and text position. Clicking inside an existing Visual
+selection preserves its extent, including reversed, exclusive, linewise and
+blockwise selections. Clicking elsewhere starts a context at that position.
+
+Built-in actions include copy/cut/paste, undo/redo, literal selection search,
+copy relative file path and copy `path:line`. Copy uses the system clipboard when
+available and the unnamed register otherwise. Paste follows native Normal/Visual
+semantics; in Insert mode it inserts before the clicked character and built-in
+actions resume Insert mode. Read-only or
+nonmodifiable buffers disable editing actions.
+
+LSP actions appear only when an attached client supports them: definitions,
+references, hover, rename, code actions and formatting. With a selection, only
+range operations are offered. Line diagnostics appear when present. LSP requests
+start when an action is chosen; opening the menu does not query code actions.
+The default actions use Neovim's UI and have no plugin dependencies.
+
+Navigate with arrows, `j`/`k`, Tab/Shift-Tab or the mouse wheel; Enter/Space or a
+left click executes an item. Escape/`q`/Ctrl-C cancels and restores the original
+selection or Insert mode. Clicking outside dismisses the menu and passes the
+click through. The menu fits the screen and scrolls when necessary. Resizing,
+leaving its window/tab and disabling the module close it. Changed source buffers
+cannot execute stale actions.
+
+```lua
+require("ui_tools").setup({
+  context_menu = {
+    mouse = true, -- false leaves mappings alone; menu() still works
+    builtin = true, -- basic editing, search and path actions
+    lsp = true, -- native LSP provider; false omits the default provider
+    border = "rounded",
+    min_width = 24,
+    max_width = 60,
+    max_height = 16,
+    exclude = { "lazy" }, -- filetypes; vim.b.ui_tools_disable also applies
+  },
+})
+require("ui_tools").menu() -- keyboard entry at the current cursor, even without setup
+```
+
+The module owns global right-click mappings (including repeated clicks) while
+enabled. Disable restores earlier mappings only if they are still owned by the
+module. Buffer-local mappings take precedence and are never replaced. Existing
+native `PopUp` menu definitions and global mouse/display options are untouched.
+
+Register actions from configuration or other plugins:
+
+```lua
+local menu = require("ui_tools.context_menu")
+local remove = menu.register("project", function(ctx, sink)
+  -- ctx: win, buf, cursor={one-based line, zero-based byte column}, mode, tick
+  -- ctx.selection: type, anchor/cursor (getpos format), text (lines), regions
+  if vim.bo[ctx.buf].filetype ~= "lua" then
+    return {}
+  end
+  return {
+    {
+      id = "check",
+      label = "Check this file",
+      group = "project", -- adjacent different groups get a separator
+      shortcut = "<leader>tc", -- optional; display only an actually configured key
+      action = function(context)
+        -- Source window/buffer/cursor and Visual selection are restored here.
+        vim.notify(vim.api.nvim_buf_get_name(context.buf))
+      end,
+    },
+  }
+end, { priority = 100 }) -- ascending priority, then registration order
+remove() -- idempotent; removes only this registration
+```
+
+Providers return an item list or asynchronously call `sink.update(items)` to
+replace their own list. Give items stable IDs: updates preserve the selected ID
+when it is still enabled. A loading row can omit `action` and set `enabled=false`.
+Use `sink.on_close(function() ... end)` to cancel requests or release resources.
+Late callbacks from a closed/replaced menu or removed provider are ignored.
+Treat the context as a read-only snapshot. Registrations survive disable/setup;
+new/replaced providers are collected on the next opening. Unregistering immediately
+retires visible actions. Provider/callback errors are available in `menu.errors`.
+`menu.open()` returns a handle with `close()` and `is_active()`; `menu.close()`
+dismisses the current menu. `menu.state()` exposes the active context and items
+for inspection.
+
+To use another LSP UI, register the optional adapter from configuration. It
+replaces the default LSP provider without loading the target plugin on menu open:
+
+```lua
+local detach = require("ui_tools.integrations.context_lsp").setup({
+  actions = {
+    definition = function() require("lsp-tools").lsp_definitions() end,
+    references = function() require("lsp-tools").lsp_references() end,
+    hover = function() require("lsp-tools").hover() end,
+    rename = function() require("lsp-tools").rename() end,
+    code_action = function() require("lsp-tools").code_action() end,
+    diagnostic = function() require("lsp-tools").diagnostic() end,
+    -- Unspecified actions use vim.lsp.buf; callbacks receive ctx.
+  },
+  shortcuts = { definition = "gd" }, -- supply your actual mappings
+})
+-- detach() removes the adapter; native LSP actions return on the next opening.
+```
 
 ## Status column
 

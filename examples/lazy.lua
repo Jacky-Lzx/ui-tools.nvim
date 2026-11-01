@@ -13,10 +13,22 @@ return {
     feedback = { yank = false },
     focus = { width = 100, height = 0.9, dim = true },
     scrollbar = true,
+    context_menu = true,
   },
   config = function(_, opts)
     require("ui_tools").setup(opts)
     require("ui_tools.integrations.git_tools").setup()
+    -- Optional: route menu actions through lsp-tools rather than the native UI.
+    -- require("ui_tools.integrations.context_lsp").setup({
+    --   actions = {
+    --     definition = function() require("lsp-tools").lsp_definitions() end,
+    --     references = function() require("lsp-tools").lsp_references() end,
+    --     hover = function() require("lsp-tools").hover() end,
+    --     rename = function() require("lsp-tools").rename() end,
+    --     code_action = function() require("lsp-tools").code_action() end,
+    --     diagnostic = function() require("lsp-tools").diagnostic() end,
+    --   },
+    -- })
   end,
   keys = {
     {

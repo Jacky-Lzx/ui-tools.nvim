@@ -1,5 +1,5 @@
 local M = {}
-local modules = { "indent", "statuscolumn", "guide", "feedback", "focus", "scrollbar" }
+local modules = { "context_menu", "indent", "statuscolumn", "guide", "feedback", "focus", "scrollbar" }
 
 local function highlights()
   require("ui_tools.util").hl({
@@ -85,6 +85,10 @@ end
 
 function M.dim(value)
   return require("ui_tools.focus").dim(value)
+end
+
+function M.menu(opts)
+  return require("ui_tools.context_menu").open(opts)
 end
 
 return M

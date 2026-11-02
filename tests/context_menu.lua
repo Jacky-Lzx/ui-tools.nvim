@@ -110,9 +110,17 @@ vim.lsp.get_clients = function(opts)
   h.eq(buf, opts.bufnr)
   return {
     {
+      id = 901,
+      offset_encoding = "utf-16",
       supports_method = function(_, method, source)
         h.eq(buf, source)
         return method == "textDocument/definition" or method == "textDocument/rename"
+      end,
+      request = function(_, method, _, callback, source)
+        h.eq(buf, source)
+        h.eq("textDocument/definition", method)
+        callback(nil, { uri = vim.uri_from_bufnr(buf), range = {} })
+        return true, 1
       end,
     },
   }
@@ -126,6 +134,8 @@ local detach = require("ui_tools.integrations.context_lsp").setup({
   },
 })
 menu.open()
+assert(not item("definition"))
+flush()
 assert(item("definition") and item("rename") and not item("references"))
 h.eq("gd", item("definition").shortcut)
 local action, ctx = item("definition").action, menu.state().context

@@ -57,11 +57,23 @@ semantics; in Insert mode it inserts before the clicked character and built-in
 actions resume Insert mode. Read-only or
 nonmodifiable buffers disable editing actions.
 
-LSP actions appear only when an attached client supports them: definitions,
-references, hover, rename, code actions and formatting. With a selection, only
-range operations are offered. Line diagnostics appear when present. LSP requests
-start when an action is chosen; opening the menu does not query code actions.
-The default actions use Neovim's UI and have no plugin dependencies.
+LSP definitions, references, hover and code actions appear only after an attached
+client returns a nonempty result for the clicked position or selection. An empty
+definition target, blank hover or list containing only disabled code actions
+leaves its entry hidden. Opening the menu starts asynchronous probes; basic
+actions remain usable, and arriving results preserve the selected item. Any
+client's valid result makes the action available; another client's empty result
+or error never hides it. Queries use each client's position encoding and, for
+code actions, the original selection and that client's diagnostics.
+
+Rename uses `prepareRename` when supported. Servers that offer rename without
+this optional preflight retain their capability-based entry. Formatting is a
+document/selection operation and also remains capability-based; the menu does
+not compute formatting edits in advance. With a selection, only range operations
+are offered. Line diagnostics appear when present. Pending probes are cancelled
+on close or after one second; late or stale-buffer responses are ignored.
+Choosing an entry invokes its action normally. The default actions use Neovim's
+UI and have no plugin dependencies.
 
 Navigate with arrows, `j`/`k`, Tab/Shift-Tab or the mouse wheel; Enter/Space or a
 left click executes an item. Escape/`q`/Ctrl-C cancels and restores the original
@@ -134,6 +146,7 @@ replaces the default LSP provider without loading the target plugin on menu open
 
 ```lua
 local detach = require("ui_tools.integrations.context_lsp").setup({
+  timeout_ms = 1000, -- availability probe deadline; also cancels outstanding requests
   actions = {
     definition = function() require("lsp-tools").lsp_definitions() end,
     references = function() require("lsp-tools").lsp_references() end,

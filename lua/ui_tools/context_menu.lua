@@ -367,8 +367,12 @@ function M.open(opts)
       { name = "builtin", provider = require("ui_tools.context_menu.actions").items }
   end
   if options.lsp ~= false and not providers.lsp then
-    s.sources[#s.sources + 1] =
-      { name = "lsp", provider = require("ui_tools.integrations.context_lsp").items }
+    s.sources[#s.sources + 1] = {
+      name = "lsp",
+      provider = function(source, sink)
+        return require("ui_tools.integrations.context_lsp").items(source, nil, sink)
+      end,
+    }
   end
   local registered = vim.tbl_values(providers)
   table.sort(registered, function(a, b)

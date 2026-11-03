@@ -5,6 +5,7 @@ is explicitly enabled; requiring the plugin does not install UI or mappings.
 
 ```lua
 require("ui_tools").setup({
+  dashboard = true,
   indent = { only_scope = true, chunk = true },
   statuscolumn = true,
   guide = { columns = { 121 } },
@@ -21,6 +22,56 @@ Zoom, scope dimming, current-line pulse and optional GitTools markers.
 Disable competing renderers (for example Snacks indent) when enabling a module.
 No colorscheme or icon font is required. Override `UiTools*` highlight groups
 through your colorscheme; plugin defaults use standard highlight links.
+
+## Dashboard
+
+`dashboard = true` opens a centered start screen when Neovim starts with an empty
+buffer and an attached UI. File arguments, piped input, modified buffers, named
+buffers, special buffers and existing splits suppress automatic opening. Disable
+your previous dashboard before enabling this module.
+
+```lua
+require("ui_tools").setup({
+  dashboard = {
+    autostart = true,
+    width = 60, -- expands for the header, bounded by the window
+    layout = "vertical", -- "vertical": art above actions; "horizontal": art beside actions
+    gap = 2, -- preferred spacing, reduced automatically when needed
+    header = "N E O V I M", -- multiline text is supported
+    keys = {
+      { key = "f", desc = "Find File", action = function()
+        require("selection_tools").files()
+      end },
+      { key = "n", desc = "New File", action = "enew | startinsert" },
+      { key = "q", desc = "Quit", action = "qa" },
+    },
+    footer = function() return "Welcome" end, -- string, function or false
+  },
+})
+require("ui_tools").dashboard() -- manually open; also works without setup
+require("ui_tools.dashboard").close()
+```
+
+Actions are Ex commands or callbacks. Each item accepts an optional `icon` and
+`enabled` boolean/callback. Picker and session integrations belong in these
+callbacks; the dashboard has no runtime dependencies. Defaults provide New File,
+Quit and a Neovim version footer. Item keys are buffer-local. Use `j`/`k`, arrows
+or Tab/Shift-Tab to select, Enter to execute, and Escape to return to the source
+buffer. Reserve these navigation keys for navigation when defining item keys.
+
+Both layouts fit automatically on resize: blank borders around the art are
+trimmed, spacing contracts, and the art scales down proportionally by character
+sampling to fit the remaining display cells. Wide characters stay intact.
+The menu keeps its shortcut labels; long descriptions and the footer are
+truncated to fit. In extremely short windows, actions take priority over the
+footer and art, and the menu scrolls. It refreshes on `VeryLazy`/`LazyVimStarted`, so
+the footer can display lazy.nvim startup statistics. Window options are restored
+when leaving or disabling the dashboard, preserving later option changes. Source
+buffers retain unsaved text. No global display options or mappings are changed.
+The dashboard disables cursorline while open. Colors use
+`UiToolsDashboardHeader`, `UiToolsDashboardDesc` (Function),
+`UiToolsDashboardIcon` (DiagnosticHint), `UiToolsDashboardKey` and
+`UiToolsDashboardFooter`. Override these highlight groups in your colorscheme.
 
 ## Indentation and current block
 

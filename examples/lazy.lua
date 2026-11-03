@@ -1,11 +1,12 @@
 -- Point dir at your local checkout. Disable Snacks indent/statuscolumn, remove
--- its Zen/Zoom/dim mappings, and disable nvim-scrollbar before using this spec.
+-- its Zen/Zoom/dim mappings and dashboard, and disable nvim-scrollbar before using this spec.
 return {
   dir = vim.fn.expand("~/Documents/Github/nvim_plugins/ui-tools.nvim"),
   name = "ui-tools.nvim",
   main = "ui_tools",
   lazy = false,
   opts = {
+    dashboard = { layout = "vertical" }, -- or "horizontal"; both fit automatically
     indent = { only_scope = true, chunk = true },
     statuscolumn = true,
     guide = { columns = { 121 }, char = "│" },

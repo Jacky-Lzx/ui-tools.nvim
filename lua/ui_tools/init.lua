@@ -1,5 +1,6 @@
 local M = {}
-local modules = { "context_menu", "indent", "statuscolumn", "guide", "feedback", "focus", "scrollbar" }
+local modules =
+  { "dashboard", "context_menu", "indent", "statuscolumn", "guide", "feedback", "focus", "scrollbar" }
 
 local function highlights()
   require("ui_tools.util").hl({
@@ -19,6 +20,11 @@ local function highlights()
     UiToolsScrollbarHandle = "Visual",
     UiToolsScrollbarCursor = "Special",
     UiToolsSearch = "Search",
+    UiToolsDashboardHeader = "Title",
+    UiToolsDashboardDesc = "Function",
+    UiToolsDashboardIcon = "DiagnosticHint",
+    UiToolsDashboardKey = "Special",
+    UiToolsDashboardFooter = "Comment",
   })
 end
 
@@ -89,6 +95,10 @@ end
 
 function M.menu(opts)
   return require("ui_tools.context_menu").open(opts)
+end
+
+function M.dashboard(opts)
+  return require("ui_tools.dashboard").open(opts)
 end
 
 return M

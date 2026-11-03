@@ -1,6 +1,7 @@
 """Exercise dashboard rendering, real key dispatch, resizing and startup guards."""
 import os
 import signal
+import time
 from rpc import Capture
 
 signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError("Dashboard UI timed out")))
@@ -106,7 +107,7 @@ try:
     assert "中文⣿⣿⣿" in screen() and "Find File" in screen(), screen()
     keys("j")
     assert lua("local s=d.state(); return vim.api.nvim_win_get_cursor(s.win)[2] == s.cols[2]")
-    keys("<Esc>")
+    lua("d.close()")
 
     # Repeated setup and later UIEnter must never cover modified text or file args.
     lua("ui.setup({dashboard=true}); vim.wait(30)")
@@ -116,8 +117,19 @@ try:
     lua("vim.cmd('argdelete *'); vim.cmd('vsplit'); ui.setup({dashboard=true}); vim.wait(30)")
     assert lua("return d.state() == nil")
     lua("vim.cmd('only'); ui.dashboard({keys={}})")
-    keys("<Esc>")
-    assert lua("return d.state() == nil and vim.wo.number")
-    print("dashboard UI startup, Unicode, keys, resize and window restoration passed")
+    # Escape uses normal quit protection when hidden buffers contain unsaved work.
+    ui.request("nvim_input", ["<Esc>"])
+    # Input remains available while the error's hit-enter prompt blocks Lua RPC.
+    time.sleep(0.1)
+    ui.request("nvim_input", ["<CR>"])
+    lua("return 1")
+    assert ui.process.poll() is None
+    assert lua("return vim.v.errmsg:find('E162', 1, true) ~= nil")
+    assert lua("return vim.bo.modified")
+    lua("for _,buf in ipairs(vim.api.nvim_list_bufs()) do vim.bo[buf].modified=false end")
+    lua("ui.dashboard({keys={}})")
+    ui.request("nvim_input", ["<Esc>"])
+    assert ui.process.wait(timeout=3) == 0
+    print("dashboard UI startup, Unicode, keys, resize, quit protection and Escape exit passed")
 finally:
     ui.close()

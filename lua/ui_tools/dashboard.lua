@@ -243,7 +243,7 @@ function M.open(opts)
   vim.keymap.set("n", "<CR>", function()
     run(s, s.items[s.selected])
   end, { buffer = s.buf, silent = true })
-  vim.keymap.set("n", "<Esc>", M.close, { buffer = s.buf, silent = true })
+  vim.keymap.set("n", "<Esc>", "<Cmd>qa<CR>", { buffer = s.buf, silent = true, desc = "Quit Neovim" })
   return s.buf
 end
 

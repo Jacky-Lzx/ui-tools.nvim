@@ -56,8 +56,9 @@ Actions are Ex commands or callbacks. Each item accepts an optional `icon` and
 `enabled` boolean/callback. Picker and session integrations belong in these
 callbacks; the dashboard has no runtime dependencies. Defaults provide New File,
 Quit and a Neovim version footer. Item keys are buffer-local. Use `j`/`k`, arrows
-or Tab/Shift-Tab to select, Enter to execute, and Escape to return to the source
-buffer. Reserve these navigation keys for navigation when defining item keys.
+or Tab/Shift-Tab to select, Enter to execute, and Escape to quit Neovim (unsaved
+buffers prevent quitting). Reserve these navigation keys for navigation when
+defining item keys.
 
 Both layouts fit automatically on resize: blank borders around the art are
 trimmed, spacing contracts, and the art scales down proportionally by character

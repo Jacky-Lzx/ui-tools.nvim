@@ -286,9 +286,8 @@ function M.setup(opts)
   })
   api.nvim_create_autocmd({ "VimEnter", "UIEnter" }, {
     group = group,
-    callback = function()
-      vim.schedule(autostart)
-    end,
+    -- Populate the start screen before the first redraw can display Nvim's intro.
+    callback = autostart,
   })
   if vim.v.vim_did_enter == 1 then
     vim.schedule(autostart)

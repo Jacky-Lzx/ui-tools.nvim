@@ -17,4 +17,5 @@ python3 tests/scrollbar_cursor_ui.py
 python3 tests/context_menu_ui.py
 python3 tests/context_lsp_ui.py
 python3 tests/dashboard_ui.py
+python3 tests/dashboard_startup_ui.py
 stylua --check lua tests examples

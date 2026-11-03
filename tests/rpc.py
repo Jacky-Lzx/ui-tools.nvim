@@ -68,8 +68,8 @@ def unpack(stream):
 
 
 class Capture:
-    def __init__(self, env):
-        self.process = subprocess.Popen([env.get("NVIM_BIN", "nvim"), "--embed", "--clean", "-n"], cwd=ROOT, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    def __init__(self, env, args=None):
+        self.process = subprocess.Popen([env.get("NVIM_BIN", "nvim"), "--embed", "-n", *(args if args is not None else ["--clean"])], cwd=ROOT, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.serial = 0
         self.grid = []
         self.attrs = {0: {}}

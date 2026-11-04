@@ -28,7 +28,7 @@ local function highlights(c)
       UiToolsDim = { fg = c.ui.muted },
       UiToolsBackdrop = { fg = c.palette.bg, bg = c.palette.bg },
       UiToolsScrollbar = { bg = "NONE", blend = 100 },
-      UiToolsScrollbarHandle = { fg = c.ui.selection_fg, bg = c.ui.selection_bg },
+      UiToolsScrollbarHandle = { fg = c.ui.selection_fg, bg = c.ui.selection_bg, blend = 0 },
       UiToolsScrollbarCursor = { fg = c.ui.accent },
       UiToolsSearch = { fg = c.palette.purple },
       UiToolsDashboardHeader = { fg = c.ui.accent },

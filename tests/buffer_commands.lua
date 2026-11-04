@@ -67,7 +67,7 @@ end
 vim.cmd("BufferGoto 99")
 assert(warnings[#warnings]:find("No buffer available", 1, true))
 
--- Bulk close continues past protected buffers and never targets excluded buffers.
+-- Bulk close includes listed special buffers, but preserves excluded/unlisted ones.
 a, b, c, d = start({ "current", "pinned", "modified", "clean", "excluded", "special", "unlisted" })
 local all = order()
 line.pin(b)
@@ -79,12 +79,13 @@ line.refresh()
 vim.cmd("BufferCloseAllButCurrent")
 t.eq({ b, a, c }, order())
 assert(not api.nvim_buf_is_valid(d))
+assert(not api.nvim_buf_is_valid(all[6]))
 t.eq("unsaved text", api.nvim_buf_get_lines(c, 0, -1, false)[1])
 assert(#warnings == 1 and warnings[1]:find("pinned", 1, true) and warnings[1]:find("unsaved", 1, true))
 vim.cmd("BufferCloseAllButCurrent!")
 t.eq({ a }, order())
 t.eq(a, api.nvim_get_current_buf())
-for i = 5, 7 do
+for _, i in ipairs({ 5, 7 }) do
   assert(api.nvim_buf_is_valid(all[i]))
 end
 

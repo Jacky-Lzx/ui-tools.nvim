@@ -85,8 +85,12 @@ The dashboard disables cursorline while open. Colors use
 ## Buffer bar
 
 `bufferline = true` replaces the native tabline with an ordered list of listed
-file buffers, across tabpages. It has no dependency on barbar, devicons or an
-icon font. Disable your previous tabline plugin before enabling it. Existing
+buffers, across tabpages. This includes listed special buffers such as
+`checkhealth` reports, terminals, and plugin-managed buffers. Unlisted buffers
+(such as private picker and dashboard buffers), excluded filetypes, and buffers
+with `vim.b.ui_tools_disable = true` remain hidden.
+It has no dependency on barbar, devicons or an icon font. Disable your previous
+tabline plugin before enabling it. Existing
 nonempty `tabline` values are preserved unless `force = true`.
 
 ```lua
@@ -124,7 +128,7 @@ commands with the same name are preserved:
 | `:BufferMoveNext [count]`, `:BufferMovePrevious [count]` | Move within the current pinned/unpinned group. |
 | `:BufferPin` | Toggle the current buffer's pin. |
 | `:BufferClose[!]` | Close the current buffer. |
-| `:BufferRestore` | Restore the last closed named buffer from disk. |
+| `:BufferRestore` | Restore the last closed named ordinary file buffer from disk. |
 | `:BufferCloseAllButCurrent[!]` | Close all other buffers. |
 | `:BufferCloseBuffersLeft[!]`, `:BufferCloseBuffersRight[!]` | Close buffers on that side of the current position. |
 | `:BufferCloseAllButPinned[!]` | Close unpinned buffers. |
@@ -134,7 +138,8 @@ commands with the same name are preserved:
 Batch commands snapshot their targets in bar order, skip protected buffers, and
 report any failures while continuing to close other targets. `!` overrides pin
 and unsaved-change protection for selected targets; it does not override
-`winfixbuf`. Excluded and special buffers are never batch targets. The Lua API
+`winfixbuf`. Only buffers in the bar are batch targets, including listed special
+buffers; unlisted, excluded, and disabled buffers are never targeted. The Lua API
 `buffers.close_many(scope, force)` accepts `"all"`, `"others"`, `"left"`, `"right"`,
 `"unpinned"`, or `"hidden"`, and returns `ok, reason`. Disabling the module removes
 only its own commands.
@@ -146,10 +151,11 @@ preserves splits, respects `winfixbuf`, and supplies an empty editing buffer whe
 the last buffer closes. Pinned buffers stay together at the start; movement is
 limited to the buffer's pinned/unpinned group. Order and pins last until disable
 or setup, and are not persisted to sessions.
-`restore()` reopens the last successfully closed named buffer from disk, restores
-its position in the bar and cursor, and keeps up to 20 names in memory. It does
-not recover discarded unsaved edits or unnamed buffers. Switching protection
-still applies, and a failed restore leaves history intact.
+`restore()` reopens the last successfully closed named ordinary file buffer from
+disk, restores its position in the bar and cursor, and keeps up to 20 names in memory. It does
+not recover discarded unsaved edits, unnamed buffers, or special buffers.
+Closing a special buffer leaves the file restore history intact. Switching
+protection still applies, and a failed restore leaves history intact.
 
 Duplicate basenames use the shortest unique path suffix. Long names and narrow
 windows truncate safely by display cell. Overflow indicators keep the current

@@ -82,6 +82,25 @@ try:
     keys(":BufferClose<CR>:only<CR>")
     assert lua("return vim.api.nvim_get_current_buf()==buffers[2] and #vim.api.nvim_list_wins()==1")
 
+    # Native health reports appear automatically, support mouse/key navigation,
+    # and close without altering their nofile type or the source buffer.
+    keys(":checkhealth vim.lsp<CR>")
+    text = screen()
+    assert "health:" in text, text
+    lua("health=vim.api.nvim_get_current_buf()")
+    assert lua("return vim.bo[health].buftype=='nofile' and vim.bo[health].buflisted")
+    col = next(i for i, (char, _) in enumerate(ui.grid[0]) if char == "中")
+    ui.request("nvim_input_mouse", ["left", "press", "", 0, 0, col])
+    ui.request("nvim_input_mouse", ["left", "release", "", 0, 0, col])
+    assert lua("return vim.api.nvim_get_current_buf()==buffers[2]")
+    keys("]b")
+    assert lua("return vim.api.nvim_get_current_buf()==health")
+    keys(":BufferClose<CR>")
+    assert "health:" not in screen()
+    assert lua("return not vim.api.nvim_buf_is_valid(health) and vim.api.nvim_get_current_buf()==buffers[2]")
+    keys(":tabclose<CR>")
+    assert lua("return vim.api.nvim_get_current_buf()==buffers[2] and vim.v.errmsg==''")
+
     lua("""
       for i=1,60 do
         local b=vim.api.nvim_create_buf(true,false)
@@ -125,6 +144,6 @@ try:
     assert lua("return vim.deep_equal(saved_cursor,vim.api.nvim_win_get_cursor(0)) and saved_view.topline==vim.fn.winsaveview().topline")
     lua("require('ui_tools').disable()")
     assert lua("return vim.o.tabline == ''")
-    print("bufferline native UI commands, mouse, keys, 500-character burst, overflow and resize passed")
+    print("bufferline native UI commands, mouse, keys, checkhealth, 500-character burst, overflow and resize passed")
 finally:
     ui.close()

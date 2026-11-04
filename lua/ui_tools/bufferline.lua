@@ -31,7 +31,6 @@ end
 local function eligible(buf)
   return api.nvim_buf_is_valid(buf)
     and vim.bo[buf].buflisted
-    and vim.bo[buf].buftype == ""
     and not vim.tbl_contains(M.options.exclude, vim.bo[buf].filetype)
     and vim.b[buf].ui_tools_disable ~= true
 end
@@ -328,6 +327,7 @@ function M.close(buf, force)
     return false, pinned[buf] and "Buffer is pinned" or "Buffer has unsaved changes"
   end
   local name = api.nvim_buf_get_name(buf)
+  local restorable = vim.bo[buf].buftype == "" and name ~= ""
   local cursor = { 1, 0 }
   for _, win in ipairs(api.nvim_list_wins()) do
     if api.nvim_win_get_buf(win) == buf then
@@ -369,7 +369,7 @@ function M.close(buf, force)
     if created and api.nvim_buf_is_valid(replacement) and not vim.bo[replacement].modified then
       pcall(api.nvim_buf_delete, replacement, { force = false })
     end
-  elseif name ~= "" then
+  elseif restorable then
     closed[#closed + 1] = { name = name, index = index, cursor = cursor }
     if #closed > 20 then
       table.remove(closed, 1)

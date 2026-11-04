@@ -1,0 +1,68 @@
+-- Shared, dependency-free helpers for the native tabline and statusline.
+local M = {}
+
+function M.text(value)
+  return tostring(value or ""):gsub("[%z\1-\31\127]", " ")
+end
+
+function M.escape(value)
+  return M.text(value):gsub("%%", "%%%%")
+end
+
+function M.highlight(name)
+  return (name or "StatusLine"):gsub("[^%w_@.%-]", "")
+end
+
+function M.label(value, hl)
+  return "%#" .. M.highlight(hl) .. "#" .. M.escape(value) .. "%*"
+end
+
+function M.width(value)
+  return vim.fn.strdisplaywidth(value)
+end
+
+function M.truncate(value, width)
+  width = math.max(0, width)
+  if M.width(value) <= width then
+    return value
+  end
+  if width == 0 then
+    return ""
+  end
+  local low, high = 0, vim.fn.strchars(value)
+  while low < high do
+    local mid = math.ceil((low + high) / 2)
+    if M.width(vim.fn.strcharpart(value, 0, mid)) <= width - 1 then
+      low = mid
+    else
+      high = mid - 1
+    end
+  end
+  return vim.fn.strcharpart(value, 0, low) .. "…"
+end
+
+-- One deferred callback per burst, with no repeating timer or idle work.
+-- Cancelling also invalidates callbacks from a previous setup generation.
+function M.scheduler(delay, callback)
+  local generation, pending = 0, false
+  return {
+    request = function()
+      if pending then
+        return
+      end
+      pending = true
+      local current = generation
+      vim.defer_fn(function()
+        if generation == current then
+          pending = false
+          callback()
+        end
+      end, delay)
+    end,
+    cancel = function()
+      generation, pending = generation + 1, false
+    end,
+  }
+end
+
+return M

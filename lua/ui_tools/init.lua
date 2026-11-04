@@ -1,6 +1,15 @@
 local M = {}
-local modules =
-  { "dashboard", "context_menu", "indent", "statuscolumn", "guide", "feedback", "focus", "scrollbar" }
+local modules = {
+  "dashboard",
+  "bufferline",
+  "context_menu",
+  "indent",
+  "statuscolumn",
+  "guide",
+  "feedback",
+  "focus",
+  "scrollbar",
+}
 
 local function highlights()
   require("ui_tools.util").hl({

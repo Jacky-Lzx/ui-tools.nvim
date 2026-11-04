@@ -1,5 +1,6 @@
 -- Point dir at your local checkout. Disable Snacks indent/statuscolumn, remove
 -- its Zen/Zoom/dim mappings and dashboard, and disable nvim-scrollbar before using this spec.
+-- Disable barbar/other tabline plugins before enabling bufferline.
 return {
   dir = vim.fn.expand("~/Documents/Github/nvim_plugins/ui-tools.nvim"),
   name = "ui-tools.nvim",
@@ -7,6 +8,7 @@ return {
   lazy = false,
   opts = {
     dashboard = { layout = "vertical" }, -- or "horizontal"; both fit automatically
+    bufferline = { numbers = true, sidebar_filetypes = { NvimTree = true } },
     indent = { only_scope = true, chunk = true },
     statuscolumn = true,
     guide = { columns = { 121 }, char = "│" },
@@ -32,6 +34,27 @@ return {
     -- })
   end,
   keys = {
+    {
+      "[b",
+      function()
+        require("ui_tools.bufferline").cycle(-1)
+      end,
+      desc = "Previous buffer",
+    },
+    {
+      "]b",
+      function()
+        require("ui_tools.bufferline").cycle(1)
+      end,
+      desc = "Next buffer",
+    },
+    {
+      "<A-w>",
+      function()
+        require("ui_tools.bufferline").close()
+      end,
+      desc = "Close buffer",
+    },
     {
       "<leader><leader>",
       function()

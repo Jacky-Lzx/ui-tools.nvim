@@ -6,6 +6,7 @@ is explicitly enabled; requiring the plugin does not install UI or mappings.
 ```lua
 require("ui_tools").setup({
   dashboard = true,
+  bufferline = true,
   indent = { only_scope = true, chunk = true },
   statuscolumn = true,
   guide = { columns = { 121 } },
@@ -73,6 +74,59 @@ The dashboard disables cursorline while open. Colors use
 `UiToolsDashboardHeader`, `UiToolsDashboardDesc` (Function),
 `UiToolsDashboardIcon` (DiagnosticHint), `UiToolsDashboardKey` and
 `UiToolsDashboardFooter`. Override these highlight groups in your colorscheme.
+
+## Buffer bar
+
+`bufferline = true` replaces the native tabline with an ordered list of listed
+file buffers, across tabpages. It has no dependency on barbar, devicons or an
+icon font. Disable your previous tabline plugin before enabling it. Existing
+nonempty `tabline` values are preserved unless `force = true`.
+
+```lua
+require("ui_tools").setup({
+  bufferline = {
+    auto_hide = 1, -- hide with <= 1 buffers; -1 always shows the bar
+    numbers = false, -- display positions for go(index)
+    close_buttons = true,
+    diagnostics = false, -- optional cached E/W/I/H counts
+    max_name_length = 28, -- display cells, not bytes
+    sidebar_filetypes = { NvimTree = true }, -- offset left/right edge sidebars
+    exclude = {}, -- filetypes; vim.b.ui_tools_disable also applies
+    refresh = 30, -- coalesce event bursts, in milliseconds
+    force = false,
+  },
+})
+local buffers = require("ui_tools.bufferline")
+vim.keymap.set("n", "[b", function() buffers.cycle(-1) end)
+vim.keymap.set("n", "]b", function() buffers.cycle(1) end)
+vim.keymap.set("n", "<A-w>", function() buffers.close() end)
+-- Other API calls: buffers.go(3), move(-1), move(1), pin(), close(buf, force).
+-- buffers.items() returns ordered { buf, name, pinned } records.
+```
+
+Left click switches buffers; middle click or the close button closes one. Enable
+native mouse input with `vim.opt.mouse = "a"` to use these. No mappings or
+barbar-compatible commands are installed automatically. Switching obeys native
+modified-buffer protection. `close()` returns `false, reason` for modified or
+pinned buffers; `close(buf, true)` explicitly overrides both protections. Closing
+preserves splits, respects `winfixbuf`, and supplies an empty editing buffer when
+the last buffer closes. Pinned buffers stay together at the start; movement is
+limited to the buffer's pinned/unpinned group. Order and pins last until disable
+or setup, and are not persisted to sessions.
+
+Duplicate basenames use the shortest unique path suffix. Long names and narrow
+windows truncate safely by display cell. Overflow indicators keep the current
+buffer visible. Current, visible-in-split and other buffers use
+`UiToolsBufferCurrent`, `UiToolsBufferVisible` and `UiToolsBuffer`; unused space
+uses `UiToolsBufferFill`. Native tabpages still work through Neovim's tab commands;
+the bar displays buffers rather than tabpage buttons.
+
+Render returns a prebuilt string. Buffer-list/path scans run on structural events,
+not on cursor motion or typing; labels are cached, and diagnostics update only on
+diagnostic changes. There is no animation, repeating timer, filesystem scan or
+process launch. `buffers.refresh()` explicitly rebuilds after custom changes.
+Disable restores `tabline` and `showtabline` only while their values are still
+owned by the module; later changes by another owner are preserved.
 
 ## Indentation and current block
 

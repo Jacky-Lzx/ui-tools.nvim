@@ -7,7 +7,19 @@ local order, entries, pinned, diagnostics = {}, {}, {}, {}
 local closed = {}
 local output, scan, queue, previous, shown = "", true, nil, nil, nil
 
-local function highlights()
+local function highlights(c)
+  if c then
+    local groups = {
+      UiToolsBuffer = { fg = c.ui.muted, bg = c.ui.bg },
+      UiToolsBufferCurrent = { fg = c.ui.selection_fg, bg = c.ui.selection_bg, bold = true },
+      UiToolsBufferVisible = { fg = c.ui.accent, bg = c.ui.bg },
+      UiToolsBufferFill = { bg = c.ui.bg },
+    }
+    for name, value in pairs(groups) do
+      api.nvim_set_hl(0, name, value)
+    end
+    return
+  end
   util.hl({
     UiToolsBuffer = "TabLine",
     UiToolsBufferCurrent = "TabLineSel",
@@ -441,9 +453,8 @@ function M.setup(opts)
   M.enabled, scan, shown = true, true, vim.o.showtabline
   vim.o.tabline = format
   queue = bar.scheduler(opts.refresh, update)
-  highlights()
+  require("ui_tools.theme").bind("bufferline", highlights)
   local group = util.group("Bufferline")
-  api.nvim_create_autocmd("ColorScheme", { group = group, callback = highlights })
   api.nvim_create_autocmd({ "BufAdd", "BufDelete", "BufWipeout", "BufFilePost", "FileType" }, {
     group = group,
     callback = function()
@@ -496,6 +507,7 @@ function M.setup(opts)
 end
 
 function M.disable()
+  require("ui_tools.theme").unbind("bufferline")
   M.enabled = false
   if queue then
     queue.cancel()

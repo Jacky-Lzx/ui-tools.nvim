@@ -12,7 +12,36 @@ local modules = {
   "scrollbar",
 }
 
-local function highlights()
+local function highlights(c)
+  if c then
+    local groups = {
+      UiToolsIndent = { fg = c.ui.subtle },
+      UiToolsScope = { fg = c.ui.accent },
+      UiToolsMark = { fg = c.ui.accent },
+      UiToolsStatusSeparator = { fg = c.ui.border },
+      UiToolsLineNr = { fg = c.ui.subtle },
+      UiToolsCursorLineNr = { fg = c.ui.accent, bold = true },
+      UiToolsFoldSeparator = { fg = c.ui.subtle },
+      UiToolsFoldScope = { fg = c.ui.muted },
+      UiToolsGuide = { fg = c.ui.subtle },
+      UiToolsFlash = { fg = c.ui.selection_fg, bg = c.ui.selection_bg },
+      UiToolsDim = { fg = c.ui.muted },
+      UiToolsBackdrop = { fg = c.palette.bg, bg = c.palette.bg },
+      UiToolsScrollbar = { bg = "NONE", blend = 100 },
+      UiToolsScrollbarHandle = { fg = c.ui.selection_fg, bg = c.ui.selection_bg },
+      UiToolsScrollbarCursor = { fg = c.ui.accent },
+      UiToolsSearch = { fg = c.palette.purple },
+      UiToolsDashboardHeader = { fg = c.ui.accent },
+      UiToolsDashboardDesc = { fg = c.ui.fg },
+      UiToolsDashboardIcon = { fg = c.diagnostic.hint },
+      UiToolsDashboardKey = { fg = c.ui.accent },
+      UiToolsDashboardFooter = { fg = c.ui.muted },
+    }
+    for name, value in pairs(groups) do
+      vim.api.nvim_set_hl(0, name, value)
+    end
+    return
+  end
   require("ui_tools.util").hl({
     UiToolsIndent = "Whitespace",
     UiToolsScope = "Special",
@@ -45,11 +74,7 @@ function M.setup(opts)
     M.disable() ~= false,
     "ui-tools: cannot replace configuration while a modified focus buffer is blocked"
   )
-  highlights()
-  vim.api.nvim_create_autocmd("ColorScheme", {
-    group = require("ui_tools.util").group("Highlights"),
-    callback = highlights,
-  })
+  require("ui_tools.theme").bind("core", highlights)
   M.options = vim.deepcopy(opts)
   for _, name in ipairs(modules) do
     local config = opts[name]
@@ -68,7 +93,7 @@ function M.disable()
       end
     end
   end
-  pcall(vim.api.nvim_del_augroup_by_name, "UiToolsHighlights")
+  require("ui_tools.theme").unbind("core")
 end
 
 function M.toggle(name)

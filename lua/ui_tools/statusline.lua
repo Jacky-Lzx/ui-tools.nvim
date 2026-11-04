@@ -33,7 +33,33 @@ local priorities = {
 }
 local dynamic = { mode = true, progress = true, location = true, recording = true }
 
-local function highlights()
+local function highlights(c)
+  if c then
+    local groups = {
+      UiToolsStatus = { fg = c.ui.fg, bg = c.ui.bg },
+      UiToolsStatusAlt = { fg = c.ui.fg, bg = c.ui.bg },
+      UiToolsStatusInactive = { fg = c.ui.muted, bg = c.ui.bg },
+      UiToolsStatusDiff = { fg = c.git.change },
+      UiToolsStatusError = { fg = c.diagnostic.error },
+      UiToolsStatusWarn = { fg = c.diagnostic.warn },
+      UiToolsStatusInfo = { fg = c.diagnostic.info },
+      UiToolsStatusHint = { fg = c.diagnostic.hint },
+    }
+    for mode, color in pairs({
+      Normal = c.ui.accent,
+      Insert = c.palette.green,
+      Visual = c.palette.purple,
+      Replace = c.diagnostic.error,
+      Command = c.palette.orange,
+      Terminal = c.palette.cyan,
+    }) do
+      groups["UiToolsStatus" .. mode] = { fg = c.palette.bg, bg = color, bold = true }
+    end
+    for name, value in pairs(groups) do
+      api.nvim_set_hl(0, name, value)
+    end
+    return
+  end
   util.hl({
     UiToolsStatus = "StatusLine",
     UiToolsStatusAlt = "StatusLine",
@@ -551,13 +577,15 @@ function M.setup(opts)
   normalize(config.sections)
   normalize(config.inactive_sections)
   M.options, M.enabled, all_dirty = config, true, true
-  highlights()
   queue = bar.scheduler(config.refresh, update)
+  require("ui_tools.theme").bind("statusline", function(c)
+    highlights(c)
+    request()
+  end)
   local group = util.group("Statusline")
   api.nvim_create_autocmd("ColorScheme", {
     group = group,
     callback = function()
-      highlights()
       request()
     end,
   })
@@ -630,6 +658,7 @@ function M.setup(opts)
 end
 
 function M.disable()
+  require("ui_tools.theme").unbind("statusline")
   M.enabled = false
   if queue then
     queue.cancel()

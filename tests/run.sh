@@ -6,7 +6,7 @@ trap 'rm -rf "$test_root"' EXIT HUP INT TERM
 export XDG_STATE_HOME="$test_root/state" XDG_CACHE_HOME="$test_root/cache" XDG_DATA_HOME="$test_root/data"
 export NVIM_LOG_FILE="$test_root/nvim.log" PYTHONDONTWRITEBYTECODE=1
 export NVIM_BIN="${NVIM_BIN:-nvim}"
-for suite in tests/indent.lua tests/statuscolumn.lua tests/feedback.lua tests/focus.lua tests/scrollbar.lua tests/context_menu.lua tests/context_lsp.lua tests/dashboard.lua tests/bufferline.lua tests/statusline.lua; do
+for suite in tests/indent.lua tests/statuscolumn.lua tests/feedback.lua tests/focus.lua tests/scrollbar.lua tests/context_menu.lua tests/context_lsp.lua tests/dashboard.lua tests/bufferline.lua tests/statusline.lua tests/theme.lua; do
   "$NVIM_BIN" --headless -n -u NONE -i NONE --noplugin -l "$suite"
 done
 python3 tests/ui.py

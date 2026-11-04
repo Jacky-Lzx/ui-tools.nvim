@@ -558,3 +558,9 @@ Run `sh tests/run.sh` (Neovim, Python 3 and StyLua required). Tests include an
 attached Neovim UI and inspect its actual redraw grid.
 Use `NVIM_BIN=/path/to/nvim sh tests/run.sh` to test another Neovim release.
 The full behavior and UI suites have been run locally on Neovim 0.11.5 and 0.12.6.
+
+When theme-tools.nvim is active, UI highlights, statusline mode colors and buffer
+colors follow its shared semantic palette. This integration is optional and does
+not load theme-tools itself. It supports either setup order and detaches on
+`disable()`. Without theme-tools, standard Neovim highlight defaults remain.
+Use theme-tools palette overrides to customize shared colors.

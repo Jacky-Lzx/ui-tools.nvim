@@ -1,17 +1,28 @@
 local M = { enabled = false, errors = {} }
 local api = vim.api
 local bar = require("ui_tools.bar")
+local icons = require("ui_tools.icons")
 local expression = "%!v:lua.require'ui_tools.winbar'.render()"
 local owned, blocked, buffers, cache, client_dirty = {}, {}, {}, {}, {}
 local queue
 local profiles = {}
 
 local function highlights(colors)
-  local normal = api.nvim_get_hl(0, { name = "Normal", link = false })
-  -- Keep the bar opaque even when the editor's Normal background is transparent.
-  local bg = colors and (colors.ui.bg ~= "NONE" and colors.ui.bg or colors.palette.bg) or normal.bg or "NONE"
-  api.nvim_set_hl(0, "WinBar", { fg = colors and colors.ui.fg or normal.fg, bg = bg })
-  api.nvim_set_hl(0, "WinBarNC", { fg = colors and colors.ui.muted or normal.fg, bg = bg })
+  local c = bar.colors(colors)
+  local file_bg = bar.blend(c.bg, c.fg, 0.06)
+  local groups = {
+    WinBar = { fg = c.fg, bg = c.bg },
+    WinBarNC = { fg = c.muted, bg = c.bg },
+    UiToolsWinbarFile = { fg = c.fg, bg = file_bg, bold = true },
+    UiToolsWinbarFileNC = { fg = c.muted, bg = c.bg },
+    UiToolsWinbarIndicator = { fg = c.accent, bg = file_bg },
+    UiToolsWinbarIndicatorNC = { fg = c.border, bg = c.bg },
+    UiToolsWinbarSeparator = { fg = c.muted, bg = c.bg },
+    UiToolsWinbarClient = { fg = c.muted, bg = c.bg },
+  }
+  for name, value in pairs(groups) do
+    api.nvim_set_hl(0, name, value)
+  end
 end
 
 local function local_option(win)
@@ -50,7 +61,7 @@ local function update()
   if not M.enabled then
     return
   end
-  local used = {}
+  local used, icon_colors = {}, {}
   for _, win in ipairs(api.nvim_list_wins()) do
     local buf = api.nvim_win_get_buf(win)
     local suitable = eligible(win, buf)
@@ -102,12 +113,22 @@ local function update()
             end
             table.sort(clients)
           end
-          data = { clients = bar.escape(table.concat(clients, ", ")) }
+          data = { clients = bar.text(table.concat(clients, ", ")) }
           cache[buf] = data
           client_dirty[buf] = nil
         end
         local name = vim.fn.fnamemodify(api.nvim_buf_get_name(buf), ":t")
         data.name = bar.text(name == "" and "[No Name]" or name)
+        if not used[buf] then
+          local icon, source = "", "Normal"
+          if M.options.icons then
+            icon, source = icons.prefix("file", name, "")
+          end
+          data.icon, data.icon_width = bar.escape(icon), bar.width(icon)
+          data.icon_hl = bar.icon_highlight(source, "UiToolsWinbarFile", icon_colors)
+          data.icon_hl_nc = bar.icon_highlight(source, "UiToolsWinbarFileNC", icon_colors)
+          data.client_icon = M.options.icons and icons.prefix("ui", "lsp", "") or ""
+        end
         used[buf] = true
       end
       if owned[win] == nil then
@@ -174,13 +195,46 @@ function M.render()
       crumbs = bar.text(result)
     end
   end
-  local filename = M.options.filename
-      and bar.label(
-        bar.truncate(data.name, math.max(1, math.floor(width * M.options.filename_width))),
-        "Directory"
-      )
-    or ""
-  return " " .. filename .. " %<" .. crumbs .. " %=%#WinBar#" .. data.clients .. " "
+  local active = win == api.nvim_get_current_win()
+  local base = active and "WinBar" or "WinBarNC"
+  local state = active and "" or "NC"
+  local result = { "%#" .. base .. "#" }
+  if M.options.filename then
+    local budget = math.max(1, math.floor(width * M.options.filename_width))
+    local overhead = bar.width(M.options.indicator) + data.icon_width + 2
+    if crumbs ~= "" then
+      local content_width = width - overhead - bar.width(M.options.separator) - 2
+      budget = math.max(1, math.floor(content_width * M.options.filename_width))
+    end
+    if width > overhead + 1 then
+      budget = math.min(budget, width - overhead)
+      result[#result + 1] = bar.label(M.options.indicator, "UiToolsWinbarIndicator" .. state)
+      result[#result + 1] = "%#UiToolsWinbarFile"
+        .. state
+        .. "# "
+        .. "%#"
+        .. (active and data.icon_hl or data.icon_hl_nc)
+        .. "#"
+        .. data.icon
+        .. bar.label(bar.truncate(data.name, budget) .. " ", "UiToolsWinbarFile" .. state)
+    else
+      result[#result + 1] = bar.label(bar.truncate(data.name, budget), "UiToolsWinbarFile" .. state)
+    end
+  end
+  result[#result + 1] = "%#" .. base .. "#%<"
+  if crumbs ~= "" then
+    if M.options.filename then
+      result[#result + 1] = bar.label(" " .. M.options.separator .. " ", "UiToolsWinbarSeparator")
+    end
+    result[#result + 1] = crumbs
+  end
+  result[#result + 1] = "%#" .. base .. "#%="
+  -- Client badges yield space to the file and breadcrumbs in narrow splits.
+  if data.clients ~= "" and width >= 60 then
+    local clients = bar.truncate(data.client_icon .. data.clients, math.floor(width * 0.35))
+    result[#result + 1] = bar.label(" │ " .. clients .. " ", "UiToolsWinbarClient")
+  end
+  return table.concat(result)
 end
 
 function M.refresh()
@@ -200,6 +254,9 @@ function M.setup(opts)
     force = false,
     filename = true,
     filename_width = 0.45,
+    icons = true,
+    indicator = "▎",
+    separator = "›",
     filetypes = {},
     lsp = true,
     exclude = { "ui_tools_dashboard" },
@@ -208,6 +265,12 @@ function M.setup(opts)
   assert(type(M.options.force) == "boolean", "winbar.force must be boolean")
   assert(type(M.options.filename) == "boolean", "winbar.filename must be boolean")
   assert(type(M.options.lsp) == "boolean", "winbar.lsp must be boolean")
+  assert(type(M.options.icons) == "boolean", "winbar.icons must be boolean")
+  assert(
+    type(M.options.indicator) == "string" and type(M.options.separator) == "string",
+    "winbar markers must be strings"
+  )
+  M.options.indicator, M.options.separator = bar.text(M.options.indicator), bar.text(M.options.separator)
   assert(
     type(M.options.filename_width) == "number"
       and M.options.filename_width > 0
@@ -221,7 +284,10 @@ function M.setup(opts)
   local custom = bar.validate_profiles(M.options.filetypes)
   M.enabled = true
   queue = bar.scheduler(M.options.refresh, update)
-  require("ui_tools.theme").bind("winbar", highlights)
+  require("ui_tools.theme").bind("winbar", function(c)
+    highlights(c)
+    queue.request()
+  end)
   local group = require("ui_tools.util").group("Winbar")
   api.nvim_create_autocmd({ "BufWinEnter", "BufFilePost", "WinEnter", "TabEnter", "FileType" }, {
     group = group,
@@ -245,6 +311,13 @@ function M.setup(opts)
     group = group,
     callback = function(args)
       client_dirty[args.buf] = true
+      queue.request()
+    end,
+  })
+  api.nvim_create_autocmd("User", {
+    group = group,
+    pattern = { "ThemeToolsIconsChanged", "ThemeToolsReady" },
+    callback = function()
       queue.request()
     end,
   })

@@ -32,6 +32,16 @@ try:
     ui.request("nvim_ui_attach", [140, 28, {"rgb": True, "ext_linegrid": True}])
     lua("""
       api=vim.api; vim.opt.rtp:prepend(vim.fn.getcwd()); vim.o.hidden=true
+      api.nvim_set_hl(0,'Normal',{fg=0xf8f8f2,bg=0x282a36})
+      api.nvim_set_hl(0,'Function',{fg=0xf1fa8c})
+      api.nvim_set_hl(0,'BarTestIcon',{fg=0x8be9fd,bg=0xff0000})
+      icon_mode='glyph'
+      package.loaded['theme_tools.icons']={current=function() return icon_mode end,
+        get=function(category)
+          if icon_mode=='none' then return '', 'Normal', false end
+          return category=='file' and '' or '?', category=='file' and 'BarTestIcon' or 'Normal', category~='file'
+        end}
+      vim.lsp.get_clients=function() return {{name='lua_ls'}} end
       vim.o.splitkeep='screen'
       api.nvim_buf_set_name(0,'/tmp/ui-tools-winbar-ui/left%file.lua')
       local lines={}; for i=1,200 do lines[i]='text '..i end
@@ -44,6 +54,17 @@ try:
       require('ui_tools').setup({winbar=opts})
     """)
     assert "left%file.lua" in window_bar("left")
+    assert "▎" in window_bar("left") and "›" in window_bar("left") and " lua_ls" in window_bar("left")
+    row, col = lua("return api.nvim_win_get_position(left)")
+    icon = next(i for i, (char, _) in enumerate(ui.grid[row]) if char == "")
+    assert ui.attrs[ui.grid[row][icon][1]].get("foreground") == 0x8BE9FD
+    file_bg = lua("return api.nvim_get_hl(0,{name='UiToolsWinbarFile',link=false}).bg")
+    assert file_bg != 0x282A36
+    assert ui.attrs[ui.grid[row][icon][1]].get("background") == file_bg
+    lua("icon_mode='none'; api.nvim_exec_autocmds('User',{pattern='ThemeToolsIconsChanged'})")
+    assert "" not in window_bar("left") and "" not in window_bar("left")
+    lua("icon_mode='glyph'; api.nvim_exec_autocmds('User',{pattern='ThemeToolsIconsChanged'})")
+    assert "" in window_bar("left")
     assert lua("return vim.deep_equal(saved_cursor,api.nvim_win_get_cursor(left)) and saved_view.topline==vim.fn.winsaveview().topline")
     lua("""
       vim.cmd('rightbelow vsplit'); right=api.nvim_get_current_win()
@@ -52,6 +73,10 @@ try:
     """)
     assert "left%file.lua" in window_bar("left") and "scope_30" in window_bar("left")
     assert "right%file.lua" in window_bar("right") and "scope_1" in window_bar("right")
+    row, col = lua("return api.nvim_win_get_position(left)")
+    icon = next(i for i, (char, _) in enumerate(ui.grid[row][col:col+70]) if char == "")
+    assert ui.attrs[ui.grid[row][col+icon][1]].get("background") == 0x282A36
+    assert "lua_ls" in window_bar("right")
     keys("<C-w>h")
     assert "right%file.lua" in window_bar("right")
     lua("api.nvim_win_set_buf(right,source); api.nvim_win_set_cursor(left,{1,0}); api.nvim_win_set_cursor(right,{2,0})")
@@ -62,6 +87,8 @@ try:
     assert "scope_3" in window_bar("lower")
     ui.request("nvim_ui_try_resize", [90, 22])
     assert "left%file.lua" in window_bar("left")
+    assert lua("return api.nvim_win_get_width(right) < 60")
+    assert "lua_ls" not in window_bar("right")
     assert "scope_2" in window_bar("right") and "scope_3" in window_bar("lower")
     ui.request("nvim_ui_try_resize", [140, 28])
 

@@ -86,17 +86,20 @@ vim.o.hidden = true
 
 -- Render is a prebuilt string: no buffer scans, diagnostics, stat calls or processes.
 local originals = { api.nvim_list_bufs, vim.diagnostic.count, vim.fn.system, vim.fn.systemlist }
+local get_icon, get_hl = require("ui_tools.icons").get, api.nvim_get_hl
 local function forbidden()
   error("expensive operation during render")
 end
 api.nvim_list_bufs, vim.diagnostic.count, vim.fn.system, vim.fn.systemlist =
   forbidden, forbidden, forbidden, forbidden
+require("ui_tools.icons").get, api.nvim_get_hl = forbidden, forbidden
 local start = vim.uv.hrtime()
 for _ = 1, 10000 do
   line.render()
 end
 print(string.format("bufferline 10000 cached renders: %.2f ms", (vim.uv.hrtime() - start) / 1e6))
 api.nvim_list_bufs, vim.diagnostic.count, vim.fn.system, vim.fn.systemlist = unpack(originals)
+require("ui_tools.icons").get, api.nvim_get_hl = get_icon, get_hl
 
 ui.disable()
 t.eq("", vim.o.tabline)

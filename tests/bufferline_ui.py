@@ -26,6 +26,16 @@ try:
     ui.request("nvim_ui_attach", [100, 24, {"rgb": True, "ext_linegrid": True}])
     lua("""
       vim.opt.rtp:prepend(vim.fn.getcwd()); vim.o.mouse='a'; vim.o.hidden=true
+      vim.api.nvim_set_hl(0,'Normal',{fg=0xf8f8f2,bg=0x282a36})
+      vim.api.nvim_set_hl(0,'Visual',{bg=0x44475a})
+      vim.api.nvim_set_hl(0,'Function',{fg=0xf1fa8c})
+      vim.api.nvim_set_hl(0,'BarTestIcon',{fg=0x8be9fd,bg=0xff0000})
+      icon_mode='glyph'
+      package.loaded['theme_tools.icons']={current=function() return icon_mode end,
+        get=function(category)
+          if icon_mode=='none' then return '', 'Normal', false end
+          return category=='file' and '' or '?', category=='file' and 'BarTestIcon' or 'Normal', category~='file'
+        end}
       line=require('ui_tools.bufferline'); vim.bo.buflisted=false; buffers={}
       for _, name in ipairs({'first.lua','中文%evil.lua','last.lua'}) do
         local b=vim.api.nvim_create_buf(true,false)
@@ -39,6 +49,15 @@ try:
     """)
     text = screen()
     assert all(name in text for name in ("first.lua", "中文%evil.lua", "last.lua")), text
+    assert text.startswith("▎") and "│" in text and "" in text, text
+    icon = next(i for i, (char, _) in enumerate(ui.grid[0]) if char == "")
+    assert ui.attrs[ui.grid[0][icon][1]].get("foreground") == 0x8BE9FD
+    assert ui.attrs[ui.grid[0][icon][1]].get("background") == 0x44475A
+    assert ui.attrs[ui.grid[0][0][1]].get("foreground") == 0xF1FA8C
+    lua("icon_mode='none'; vim.api.nvim_exec_autocmds('User',{pattern='ThemeToolsIconsChanged'})")
+    assert "" not in screen() and "first.lua" in screen()
+    lua("icon_mode='glyph'; vim.api.nvim_exec_autocmds('User',{pattern='ThemeToolsIconsChanged'})")
+    assert "" in screen()
     keys("]b")
     assert lua("return vim.api.nvim_get_current_buf()==buffers[2]")
     text = screen()

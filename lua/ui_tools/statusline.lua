@@ -36,26 +36,13 @@ local dynamic = { mode = true, progress = true, location = true, recording = tru
 local modes = { "Normal", "Insert", "Visual", "Replace", "Command", "Terminal" }
 local component_colors = {}
 
-local function blend(bg, fg, amount)
-  local function number(color)
-    return type(color) == "number" and color or tonumber(color:sub(2), 16)
-  end
-  bg, fg = number(bg), number(fg)
-  local result = 0
-  for _, shift in ipairs({ 16, 8, 0 }) do
-    local a, b = math.floor(bg / 2 ^ shift) % 256, math.floor(fg / 2 ^ shift) % 256
-    result = result + math.floor(a + (b - a) * amount + 0.5) * 2 ^ shift
-  end
-  return result
-end
-
 local function highlights(c)
   component_colors = {}
   if c then
     local bg = c.ui.bg ~= "NONE" and c.ui.bg or c.palette.bg
     local groups = {
       UiToolsStatus = { fg = c.ui.fg, bg = bg },
-      UiToolsStatusAlt = { fg = c.ui.fg, bg = blend(bg, c.ui.fg, 0.09) },
+      UiToolsStatusAlt = { fg = c.ui.fg, bg = bar.blend(bg, c.ui.fg, 0.09) },
       UiToolsStatusInactive = { fg = c.ui.muted, bg = bg },
       UiToolsStatusDiff = { fg = c.git.change },
       UiToolsStatusError = { fg = c.diagnostic.error },
@@ -93,11 +80,11 @@ local function highlights(c)
     api.nvim_set_hl(0, "UiToolsStatusAlt", {
       default = true,
       fg = fg,
-      bg = blend(bg, fg, 0.09),
+      bg = bar.blend(bg, fg, 0.09),
     })
     api.nvim_set_hl(0, "UiToolsStatusInactive", {
       default = true,
-      fg = comment.fg or blend(bg, fg, 0.55),
+      fg = comment.fg or bar.blend(bg, fg, 0.55),
       bg = bg,
     })
     for mode, source in pairs({

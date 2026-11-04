@@ -187,7 +187,7 @@ buffers, across tabpages. This includes listed special buffers such as
 `checkhealth` reports, terminals, and plugin-managed buffers. Unlisted buffers
 (such as private picker and dashboard buffers), excluded filetypes, and buffers
 with `vim.b.ui_tools_disable = true` remain hidden.
-It has no dependency on barbar, devicons or an icon font. Disable your previous
+It has no dependency on barbar or an icon plugin. Disable your previous
 tabline plugin before enabling it. Existing
 nonempty `tabline` values are preserved unless `force = true`.
 
@@ -196,6 +196,9 @@ require("ui_tools").setup({
   bufferline = {
     auto_hide = 1, -- hide with <= 1 buffers; -1 always shows the bar
     numbers = false, -- display positions for go(index)
+    icons = true, -- cached file icons; follows theme-tools when available
+    indicator = "▎", -- current buffer's left edge
+    separator = "│", -- other buffer edges; "" hides them
     close_buttons = true,
     diagnostics = false, -- optional cached E/W/I/H counts
     max_name_length = 28, -- display cells, not bytes
@@ -261,6 +264,11 @@ buffer visible. Current, visible-in-split and other buffers use
 `UiToolsBufferCurrent`, `UiToolsBufferVisible` and `UiToolsBuffer`; unused space
 uses `UiToolsBufferFill`. Native tabpages still work through Neovim's tab commands;
 the bar displays buffers rather than tabpage buttons.
+Solid theme backgrounds distinguish current, visible and hidden buffers. The
+current buffer has an accent-colored left edge, and file icons retain their
+foreground colors on each background. Pin icons follow the shared icon policy;
+`*` remains as a text indicator when icons are hidden. Set `icons = false` to
+omit file/pin glyphs without requiring a Nerd Font.
 
 Render returns a prebuilt string. Buffer-list/path scans run on structural events,
 not on cursor motion or typing; labels are cached, and diagnostics update only on
@@ -385,6 +393,9 @@ require("ui_tools").setup({
   winbar = {
     filename = true,
     filename_width = 0.45, -- maximum fraction of the window width
+    icons = true, -- file and LSP icons follow the shared icon policy
+    indicator = "▎", -- filename section's left edge
+    separator = "›", -- between filename and nonempty breadcrumbs
     lsp = true,
     refresh = 30, -- coalesce deferred lifecycle/LSP events
     force = false, -- preserve an existing winbar owner
@@ -408,6 +419,10 @@ Filenames and LSP client names are escaped. Long filenames truncate by display
 cell, and native overflow truncates breadcrumbs before the filename. Client
 snapshots update on attach/detach or explicit `winbar.refresh()`, never on cursor
 motion or typing. `WinBar` and `WinBarNC` follow the optional theme-tools palette.
+The active filename uses a raised background and accent edge; inactive windows
+use muted text on the base background. File icon colors remain intact. LSP names
+form a separate muted badge on the right, truncate safely, and disappear in
+windows narrower than 60 cells to leave room for the file and breadcrumbs.
 An inherited split adopts its own bar; custom owners, including later deliberate
 clears, are respected. Disable restores only still-owned window-local options.
 Visibility changes preserve editing cursors/views, and transient autocmd/float

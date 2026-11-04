@@ -1,6 +1,56 @@
 -- Shared, dependency-free helpers for native tabline, statusline and winbar.
 local M = {}
 
+function M.blend(bg, fg, amount)
+  local function number(color)
+    return type(color) == "number" and color or tonumber(color:sub(2), 16)
+  end
+  bg, fg = number(bg), number(fg)
+  local result = 0
+  for _, shift in ipairs({ 16, 8, 0 }) do
+    local a, b = math.floor(bg / 2 ^ shift) % 256, math.floor(fg / 2 ^ shift) % 256
+    result = result + math.floor(a + (b - a) * amount + 0.5) * 2 ^ shift
+  end
+  return result
+end
+
+-- Shared solid surfaces for native bars, including transparent colorschemes.
+-- Resolve only on theme updates, never while evaluating a bar expression.
+function M.colors(colors)
+  local function hl(name)
+    return vim.api.nvim_get_hl(0, { name = name, link = false })
+  end
+  local normal, visual = hl("Normal"), hl("Visual")
+  local light = vim.o.background == "light"
+  local bg = colors and (colors.ui.bg ~= "NONE" and colors.ui.bg or colors.palette.bg)
+    or normal.bg
+    or (light and 0xffffff or 0x202020)
+  local fg = colors and colors.ui.fg or normal.fg or (light and 0x202020 or 0xffffff)
+  return {
+    bg = bg,
+    fg = fg,
+    muted = colors and colors.ui.muted or hl("Comment").fg or M.blend(bg, fg, 0.55),
+    accent = colors and colors.ui.accent or hl("Function").fg or fg,
+    border = colors and colors.ui.border or M.blend(bg, fg, 0.25),
+    selected = colors and colors.ui.selection_bg or visual.bg or M.blend(bg, fg, 0.15),
+    selected_fg = colors and colors.ui.selection_fg or fg,
+  }
+end
+
+-- Keep an icon's semantic foreground on its surrounding section surface.
+-- Callers share a cache for one update; theme/provider changes resolve anew.
+function M.icon_highlight(source, background, cache)
+  source = M.highlight(source)
+  local name = "UiToolsBarIcon_" .. source .. "_" .. background
+  if not cache[name] then
+    local hl = vim.api.nvim_get_hl(0, { name = source, link = false })
+    local base = vim.api.nvim_get_hl(0, { name = background, link = false })
+    vim.api.nvim_set_hl(0, name, { fg = hl.fg or base.fg, bg = base.bg })
+    cache[name] = true
+  end
+  return name
+end
+
 function M.text(value)
   return tostring(value or ""):gsub("[%z\1-\31\127]", " ")
 end

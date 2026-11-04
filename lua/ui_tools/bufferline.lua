@@ -2,30 +2,27 @@ local M = { enabled = false }
 local api = vim.api
 local bar = require("ui_tools.bar")
 local util = require("ui_tools.util")
+local icons = require("ui_tools.icons")
 local format = "%!v:lua.require'ui_tools.bufferline'.render()"
 local order, entries, pinned, diagnostics = {}, {}, {}, {}
 local closed = {}
 local output, scan, queue, previous, shown = "", true, nil, nil, nil
+local icons_dirty = true
 
 local function highlights(c)
-  if c then
-    local groups = {
-      UiToolsBuffer = { fg = c.ui.muted, bg = c.ui.bg },
-      UiToolsBufferCurrent = { fg = c.ui.selection_fg, bg = c.ui.selection_bg, bold = true },
-      UiToolsBufferVisible = { fg = c.ui.accent, bg = c.ui.bg },
-      UiToolsBufferFill = { bg = c.ui.bg },
-    }
-    for name, value in pairs(groups) do
-      api.nvim_set_hl(0, name, value)
-    end
-    return
+  local colors = bar.colors(c)
+  local groups = {
+    UiToolsBuffer = { fg = colors.muted, bg = colors.bg },
+    UiToolsBufferCurrent = { fg = colors.selected_fg, bg = colors.selected, bold = true },
+    UiToolsBufferVisible = { fg = colors.fg, bg = bar.blend(colors.bg, colors.fg, 0.06) },
+    UiToolsBufferFill = { bg = colors.bg },
+    UiToolsBufferIndicator = { fg = colors.accent, bg = colors.selected, bold = true },
+    UiToolsBufferSeparator = { fg = colors.border, bg = colors.bg },
+    UiToolsBufferSeparatorVisible = { fg = colors.accent, bg = bar.blend(colors.bg, colors.fg, 0.06) },
+  }
+  for name, value in pairs(groups) do
+    api.nvim_set_hl(0, name, value)
   end
-  util.hl({
-    UiToolsBuffer = "TabLine",
-    UiToolsBufferCurrent = "TabLineSel",
-    UiToolsBufferVisible = "Title",
-    UiToolsBufferFill = "TabLineFill",
-  })
 end
 
 local function eligible(buf)
@@ -82,6 +79,7 @@ local function collect()
         or { buf = buf, name = name }
       next_entries[buf].modified = vim.bo[buf].modified
       next_entries[buf].readonly = vim.bo[buf].readonly
+      next_entries[buf].tail = parts[#parts] or ""
       local target = pinned[buf] and first or rest
       target[#target + 1] = buf
     else
@@ -119,30 +117,56 @@ local function update()
   end
   if scan then
     collect()
+    icons_dirty = true
   end
   local current, visible = api.nvim_get_current_buf(), {}
   for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
     visible[api.nvim_win_get_buf(win)] = true
   end
-  local cells, active = {}, 1
+  local cells, active, icon_colors = {}, 1, {}
+  local close_icon = icons.prefix("ui", "close", "×")
+  local pin_icon = M.options.icons and icons.prefix("ui", "pin", "󰐃") or ""
   for index, buf in ipairs(order) do
     local state = buf == current and "Current" or visible[buf] and "Visible" or ""
-    local prefix = (M.options.numbers and index .. " " or "") .. (pinned[buf] and "* " or "")
+    local prefix = (M.options.numbers and index .. " " or "")
+      .. (pinned[buf] and (pin_icon ~= "" and pin_icon or "* ") or "")
     local suffix = (entries[buf].modified and " [+]" or "") .. (entries[buf].readonly and " [RO]" or "")
     if diagnostics[buf] and diagnostics[buf] ~= "" then
       suffix = suffix .. " " .. diagnostics[buf]
     end
     local entry = entries[buf]
-    local close_icon = require("ui_tools.icons").prefix("ui", "close", "×")
-    local key = state .. "\n" .. prefix .. "\n" .. suffix .. "\n" .. close_icon
+    if entry.icon == nil or icons_dirty then
+      entry.icon, entry.icon_hl = "", "Normal"
+      if M.options.icons then
+        entry.icon, entry.icon_hl = icons.prefix("file", entry.tail, "")
+      end
+    end
+    local icon, icon_hl = entry.icon, entry.icon_hl
+    local hl = "UiToolsBuffer" .. state
+    local tinted = icon ~= "" and bar.icon_highlight(icon_hl, hl, icon_colors) or hl
+    local marker = state == "Current" and M.options.indicator or M.options.separator
+    local marker_hl = state == "Current" and "UiToolsBufferIndicator" or "UiToolsBufferSeparator" .. state
+    local key = state
+      .. "\n"
+      .. prefix
+      .. "\n"
+      .. suffix
+      .. "\n"
+      .. close_icon
+      .. "\n"
+      .. icon
+      .. "\n"
+      .. tinted
     if entry.key ~= key then
       local name = bar.truncate(entry.name, M.options.max_name_length)
-      local text = " " .. prefix .. name .. suffix .. " "
-      local hl = "UiToolsBuffer" .. state
+      local text = marker .. " " .. prefix .. icon .. name .. suffix .. " "
       local rendered = "%"
         .. buf
         .. "@v:lua.require'ui_tools.bufferline'.click@"
-        .. bar.label(text, hl)
+        .. bar.label(marker, marker_hl)
+        .. bar.label(" " .. prefix, hl)
+        .. bar.label(icon, tinted)
+        .. bar.label(name .. suffix .. " ", hl)
         .. "%X"
       if M.options.close_buttons and close_icon ~= "" then
         rendered = rendered
@@ -161,6 +185,7 @@ local function update()
       active = index
     end
   end
+  icons_dirty = false
   local left, right = sidebar()
   -- Leave room for both overflow indicators; keep the active buffer in view.
   local available = math.max(0, vim.o.columns - left - right)
@@ -234,6 +259,7 @@ function M.refresh()
     return
   end
   scan = true
+  icons_dirty = true
   for _, buf in ipairs(order) do
     if api.nvim_buf_is_valid(buf) then
       diagnostics[buf] = count(buf)
@@ -492,6 +518,9 @@ function M.setup(opts)
     refresh = 30,
     auto_hide = 1,
     max_name_length = 28,
+    icons = true,
+    indicator = "▎",
+    separator = "│",
     numbers = false,
     close_buttons = true,
     diagnostics = false,
@@ -501,6 +530,12 @@ function M.setup(opts)
   }, opts or {})
   assert(type(opts.refresh) == "number" and opts.refresh >= 0, "bufferline.refresh must be nonnegative")
   assert(type(opts.auto_hide) == "number" and opts.auto_hide >= -1, "bufferline.auto_hide must be >= -1")
+  assert(type(opts.icons) == "boolean", "bufferline.icons must be boolean")
+  assert(
+    type(opts.indicator) == "string" and type(opts.separator) == "string",
+    "bufferline markers must be strings"
+  )
+  opts.indicator, opts.separator = bar.text(opts.indicator), bar.text(opts.separator)
   assert(
     type(opts.max_name_length) == "number" and opts.max_name_length >= 1,
     "bufferline.max_name_length must be positive"
@@ -510,15 +545,19 @@ function M.setup(opts)
     return false
   end
   previous = { tabline = vim.o.tabline, showtabline = vim.o.showtabline }
-  M.enabled, scan, shown = true, true, vim.o.showtabline
+  M.enabled, scan, shown, icons_dirty = true, true, vim.o.showtabline, true
   vim.o.tabline = format
   queue = bar.scheduler(opts.refresh, update)
-  require("ui_tools.theme").bind("bufferline", highlights)
+  require("ui_tools.theme").bind("bufferline", function(c)
+    highlights(c)
+    request(false)
+  end)
   local group = util.group("Bufferline")
   api.nvim_create_autocmd("User", {
     group = group,
     pattern = { "ThemeToolsIconsChanged", "ThemeToolsReady" },
     callback = function()
+      icons_dirty = true
       request(false)
     end,
   })

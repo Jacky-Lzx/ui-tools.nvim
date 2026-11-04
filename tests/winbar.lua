@@ -45,6 +45,13 @@ assert(not package.loaded["lsp-tools"], "Winbar must not load an optional provid
 
 -- Rendering and cursor movement read cached clients and never enumerate buffers.
 local list_bufs = api.nvim_list_bufs
+local get_icon, get_hl = require("ui_tools.icons").get, api.nvim_get_hl
+require("ui_tools.icons").get, api.nvim_get_hl =
+  function()
+    error("Icon lookup during winbar rendering")
+  end, function()
+    error("Highlight lookup during winbar rendering")
+  end
 api.nvim_list_bufs = function()
   error("Buffer enumeration during winbar rendering")
 end
@@ -56,6 +63,7 @@ for i = 1, 100 do
   assert(text():find("scope_" .. (i % 2 + 1), 1, true))
 end
 api.nvim_list_bufs = list_bufs
+require("ui_tools.icons").get, api.nvim_get_hl = get_icon, get_hl
 vim.lsp.get_clients = function()
   queries = queries + 1
   return { { name = "updated-ls" } }

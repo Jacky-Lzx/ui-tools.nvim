@@ -83,12 +83,36 @@ assert(not text():find("E1", 1, true))
 t.eq(1, queries)
 vim.lsp.get_clients = clients
 
+local native_signs = vim.diagnostic.config().signs
+vim.diagnostic.config({ signs = { text = { [1] = "", [2] = "", [3] = "", [4] = "󰌶" } } })
+vim.diagnostic.set(ns, a, {
+  { lnum = 0, col = 0, message = "warning", severity = 2 },
+  { lnum = 1, col = 0, message = "warning", severity = 2 },
+  { lnum = 0, col = 0, message = "hint", severity = 4 },
+  { lnum = 1, col = 0, message = "hint", severity = 4 },
+  { lnum = 2, col = 0, message = "hint", severity = 4 },
+})
+settle()
+assert(text():find("2 󰌶3", 1, true), text())
+line.setup({
+  globalstatus = true,
+  sections = { b = { { "diagnostics", symbols = { warn = "▲", hint = "◆" } } } },
+})
+assert(text():find("▲2 ◆3", 1, true), text())
+vim.diagnostic.reset(ns, a)
+vim.diagnostic.config({ signs = native_signs })
+line.setup({ globalstatus = true })
+
 -- Each window uses its own buffer metadata, cursor and active/inactive sections.
 vim.cmd("vsplit")
 local left, right = api.nvim_get_current_win(), vim.fn.win_getid(vim.fn.winnr("#"))
 local b = t.buffer({ "different" })
 api.nvim_buf_set_name(b, "/tmp/ui-tools-statusline/other.txt")
+-- A buffer can restore its saved native window-local option before the deferred
+-- BufWinEnter update. It must not permanently surrender the bar to that value.
+api.nvim_set_option_value("statusline", "", { win = left, scope = "local" })
 settle()
+assert(vim.wo[left].statusline:find("ui_tools.statusline", 1, true))
 assert(text(left):find("other.txt", 1, true), text(left))
 assert(text(right):find("中文%{evil}.lua", 1, true), text(right))
 assert(not text(right):find("NORMAL", 1, true), text(right))

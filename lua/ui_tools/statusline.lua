@@ -4,6 +4,7 @@ local bar = require("ui_tools.bar")
 local util = require("ui_tools.util")
 local format = "%!v:lua.require'ui_tools.statusline'.render()"
 local windows, blocked, cache, frames, dirty = {}, {}, {}, {}, {}
+local buffers = {}
 local queue, previous_laststatus, applied_laststatus, all_dirty, custom
 local sections = { "a", "b", "c", "x", "y", "z" }
 local defaults = {
@@ -101,7 +102,7 @@ local function release(win)
   if windows[win] ~= nil and api.nvim_win_is_valid(win) and local_option(win) == format then
     api.nvim_set_option_value("statusline", windows[win], { win = win, scope = "local" })
   end
-  windows[win], frames[win] = nil, nil
+  windows[win], frames[win], buffers[win] = nil, nil, nil
 end
 
 local function synchronize()
@@ -110,14 +111,24 @@ local function synchronize()
     if not eligible(win) then
       release(win)
     elseif windows[win] ~= nil and local_option(win) ~= format then
-      -- A later owner wins, even when setup used force.
-      windows[win], frames[win], blocked[win] = nil, nil, true
+      local value = local_option(win)
+      if buffers[win] ~= api.nvim_win_get_buf(win) and (value == "" or vim.wo[win].statusline == default) then
+        -- Window-local options can return to a buffer's saved native value on
+        -- :buffer, close or restore. Adopt that buffer without losing ownership.
+        api.nvim_set_option_value("statusline", format, { win = win, scope = "local" })
+      else
+        -- A later custom owner wins, even when setup used force.
+        windows[win], frames[win], buffers[win], blocked[win] = nil, nil, nil, true
+      end
     elseif windows[win] == nil and not blocked[win] then
       local value, effective = local_option(win), vim.wo[win].statusline
       if value == format or effective == "" or effective == default or M.options.force then
         windows[win] = value == format and "" or value
         api.nvim_set_option_value("statusline", format, { win = win, scope = "local" })
       end
+    end
+    if windows[win] ~= nil then
+      buffers[win] = api.nvim_win_get_buf(win)
     end
   end
   for win in pairs(windows) do
@@ -149,6 +160,11 @@ local function snapshot(buf, flags)
   end
   if not cache[buf] or flags.all or flags.diagnostics then
     data.diagnostics = vim.diagnostic.count(buf)
+    local signs = vim.diagnostic.config().signs
+    data.diagnostic_symbols = type(signs) == "table"
+        and type(signs.text) == "table"
+        and vim.deepcopy(signs.text)
+      or {}
   end
   if not cache[buf] or flags.all or flags.lsp then
     local names, seen = {}, {}
@@ -204,9 +220,12 @@ local function value(kind, data, ctx, spec)
   end
   if kind == "diagnostics" then
     local parts, color = {}, nil
+    local symbols = spec.symbols or data.diagnostic_symbols or {}
+    local names = { "error", "warn", "info", "hint" }
     for severity, label in ipairs({ "E", "W", "I", "H" }) do
       if (data.diagnostics[severity] or 0) > 0 then
-        parts[#parts + 1] = label .. data.diagnostics[severity]
+        local symbol = symbols[severity] or symbols[names[severity]] or label
+        parts[#parts + 1] = bar.text(symbol) .. data.diagnostics[severity]
         color = color or "UiToolsStatus" .. ({ "Error", "Warn", "Info", "Hint" })[severity]
       end
     end
@@ -485,6 +504,10 @@ local function normalize(layout)
       )
       assert(not spec.cond or type(spec.cond) == "function", "statusline component.cond must be a function")
       assert(not spec.fmt or type(spec.fmt) == "function", "statusline component.fmt must be a function")
+      assert(
+        not spec.symbols or type(spec.symbols) == "table",
+        "statusline component.symbols must be a table"
+      )
       items[#items + 1] = spec
       custom = custom or type(spec[1]) == "function" or spec.cond ~= nil or spec.fmt ~= nil
     end
@@ -612,6 +635,7 @@ function M.disable()
     vim.o.laststatus = previous_laststatus
   end
   windows, blocked, cache, frames, dirty, M.errors = {}, {}, {}, {}, {}, {}
+  buffers = {}
   previous_laststatus, applied_laststatus, all_dirty = nil, nil, false
 end
 

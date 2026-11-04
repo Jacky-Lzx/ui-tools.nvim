@@ -170,6 +170,9 @@ shows the defaults. `cwd` is also available. `filename.path` accepts `relative`,
 `location` uses one-based line and byte column. `progress` shows Top, Bot or a
 percentage; `lsp` lists attached client names. The recording indicator shows the
 active register. Components that have no data disappear.
+`diagnostics` uses your native diagnostic sign symbols followed by each count,
+falling back to E/W/I/H. Override them per component with
+`{ "diagnostics", symbols = { error = "✖", warn = "▲", info = "●", hint = "◆" } }`.
 
 `branch` and `diff` read `b:git_tools_status` or `b:gitsigns_status_dict` supplied
 by an existing provider. They refresh on `User GitToolsUpdate`/`GitSignsUpdate`.

@@ -2,6 +2,7 @@ local M = {}
 local modules = {
   "dashboard",
   "bufferline",
+  "statusline",
   "context_menu",
   "indent",
   "statuscolumn",

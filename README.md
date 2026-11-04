@@ -7,6 +7,7 @@ is explicitly enabled; requiring the plugin does not install UI or mappings.
 require("ui_tools").setup({
   dashboard = true,
   bufferline = true,
+  statusline = true,
   indent = { only_scope = true, chunk = true },
   statuscolumn = true,
   guide = { columns = { 121 } },
@@ -127,6 +128,95 @@ diagnostic changes. There is no animation, repeating timer, filesystem scan or
 process launch. `buffers.refresh()` explicitly rebuilds after custom changes.
 Disable restores `tabline` and `showtabline` only while their values are still
 owned by the module; later changes by another owner are preserved.
+
+## Status bar
+
+`statusline = true` installs a native statusline in normal windows, with mode
+colors derived from your colorscheme. It works independently of the buffer bar
+and does not require lualine, an icon plugin, Git tooling or an LSP client.
+Disable your existing statusline plugin before enabling it.
+
+```lua
+require("ui_tools").setup({
+  statusline = {
+    globalstatus = false, -- true uses one global bar (laststatus=3)
+    refresh = 30, -- milliseconds; event bursts share one update
+    force = false, -- preserve existing custom statuslines by default
+    exclude = { "ui_tools_dashboard" },
+    component_separator = "", -- e.g. "│"
+    section_separator = "",
+    sections = {
+      a = { "mode" },
+      b = { "branch", "diff", "diagnostics" },
+      c = { { "filename", path = "relative" } },
+      x = { "recording", "lsp" },
+      y = { "encoding", "fileformat", "filetype", "progress" },
+      z = { "location" },
+    },
+    inactive_sections = { c = { "filename" }, z = { "location" } },
+  },
+})
+```
+
+Sections `a`, `b`, `c` align left; `x`, `y`, `z` align right. An explicitly supplied
+section replaces that section's defaults; `{}` removes it. The example above
+shows the defaults. `cwd` is also available. `filename.path` accepts `relative`,
+`absolute` or `tail`. Filename components include modified/read-only indicators.
+`location` uses one-based line and byte column. `progress` shows Top, Bot or a
+percentage; `lsp` lists attached client names. The recording indicator shows the
+active register. Components that have no data disappear.
+
+`branch` and `diff` read `b:git_tools_status` or `b:gitsigns_status_dict` supplied
+by an existing provider. They refresh on `User GitToolsUpdate`/`GitSignsUpdate`.
+The bar never runs Git or starts a provider. Without a provider these components
+are empty. `require("ui_tools.statusline").refresh()` explicitly refreshes all
+displayed buffer data and custom components after other external changes.
+
+Custom components return plain text, with statusline metacharacters escaped:
+
+```lua
+statusline = {
+  sections = {
+    x = {
+      {
+        function(ctx) return "project: " .. ctx.filetype end,
+        color = "Special", -- highlight group name
+        priority = 60, -- larger values stay visible longer when space runs out
+        max_width = 24, -- display cells, optional
+        cond = function(ctx) return ctx.active end,
+        fmt = function(text, ctx) return text:upper() end,
+      },
+    },
+  },
+}
+```
+
+Callbacks receive `win`, `buf`, `active`, `mode`, `cursor`, `lines`, `width`,
+`filetype` and `cwd`, and run in the target window's context. `cond`, `fmt`,
+`color`, `priority` and `max_width` also work on built-in components. Keep callbacks
+fast and free of side effects: they run during coalesced event updates, including
+cursor/edit events when custom callbacks are present. They never run from the
+render expression. An error hides only that component; inspect
+`require("ui_tools.statusline").errors` for the latest update's failures.
+
+Mode, recording, progress and location read bounded native state during redraw.
+Other built-in data is cached per displayed buffer and updated by the relevant
+events. Hidden buffers are not scanned. There is no idle polling, subprocess,
+file read or diagnostic/LSP query in the render path. Narrow windows shorten the
+filename and then omit lower-priority components. Text is truncated by display
+cell without splitting UTF-8 or statusline syntax. Run the optional local
+microbenchmark with
+`nvim --headless -n -u NONE -i NONE --noplugin -l tests/bars_bench.lua`.
+
+Colors use `UiToolsStatus`, `UiToolsStatusAlt`, `UiToolsStatusInactive`,
+`UiToolsStatusDiff`, `UiToolsStatusError/Warn/Info/Hint` and
+`UiToolsStatusNormal/Insert/Visual/Replace/Command/Terminal`. The final group names
+are alternatives, e.g. `UiToolsStatusInsert`. Override them in your colorscheme.
+Inactive splits use `UiToolsStatusInactive` throughout. Existing custom local or
+global statuslines are preserved unless `force = true`. Disable restores local
+statuslines and `laststatus` only while their values are still owned; later
+owners' changes are preserved. Newly inherited splits return to the global
+statusline. This module does not manage winbars.
 
 ## Indentation and current block
 

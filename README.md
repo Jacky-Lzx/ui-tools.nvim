@@ -589,3 +589,13 @@ colors follow its shared semantic palette. This integration is optional and does
 not load theme-tools itself. It supports either setup order and detaches on
 `disable()`. Without theme-tools, standard Neovim highlight defaults remain.
 Use theme-tools palette overrides to customize shared colors.
+
+## Shared icon display
+
+When theme-tools.nvim is configured, icons follow its shared icon API and
+`:ThemeToolsIcons` selection (mini.icons, nvim-web-devicons, ASCII, or hidden).
+Open views refresh when the display changes. Provider installation and updates
+belong to theme-tools; no extra icon dependency is needed for this integration.
+Without theme-tools, existing standalone defaults remain available.
+Local icon-disable options still apply. Configure shared overrides through
+`require("theme_tools").setup({ icons = { overrides = { ... } } })`.

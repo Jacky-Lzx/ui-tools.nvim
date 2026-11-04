@@ -134,7 +134,8 @@ local function update()
       suffix = suffix .. " " .. diagnostics[buf]
     end
     local entry = entries[buf]
-    local key = state .. "\n" .. prefix .. "\n" .. suffix
+    local close_icon = require("ui_tools.icons").prefix("ui", "close", "×")
+    local key = state .. "\n" .. prefix .. "\n" .. suffix .. "\n" .. close_icon
     if entry.key ~= key then
       local name = bar.truncate(entry.name, M.options.max_name_length)
       local text = " " .. prefix .. name .. suffix .. " "
@@ -144,14 +145,14 @@ local function update()
         .. "@v:lua.require'ui_tools.bufferline'.click@"
         .. bar.label(text, hl)
         .. "%X"
-      if M.options.close_buttons then
+      if M.options.close_buttons and close_icon ~= "" then
         rendered = rendered
           .. "%"
           .. buf
           .. "@v:lua.require'ui_tools.bufferline'.close_click@"
-          .. bar.label("× ", hl)
+          .. bar.label(close_icon, hl)
           .. "%X"
-        text = text .. "× "
+        text = text .. close_icon
       end
       entry.cell = { text = text, hl = hl, rendered = rendered, buf = buf, width = bar.width(text) }
       entry.key = key
@@ -177,7 +178,8 @@ local function update()
   end
   local result = { bar.label(string.rep(" ", left), "UiToolsBufferFill") }
   if first > 1 then
-    result[#result + 1] = bar.label("‹ ", "UiToolsBufferFill")
+    result[#result + 1] =
+      bar.label(require("ui_tools.icons").prefix("ui", "previous", "‹"), "UiToolsBufferFill")
   end
   for i = first, last do
     local cell = cells[i]
@@ -195,7 +197,8 @@ local function update()
     end
   end
   if last < #cells then
-    result[#result + 1] = bar.label(" ›", "UiToolsBufferFill")
+    result[#result + 1] =
+      bar.label(require("ui_tools.icons").prefix("ui", "next", "›"), "UiToolsBufferFill")
   end
   result[#result + 1] = "%#UiToolsBufferFill#%=" .. string.rep(" ", right)
   local next_output = table.concat(result)
@@ -512,6 +515,13 @@ function M.setup(opts)
   queue = bar.scheduler(opts.refresh, update)
   require("ui_tools.theme").bind("bufferline", highlights)
   local group = util.group("Bufferline")
+  api.nvim_create_autocmd("User", {
+    group = group,
+    pattern = { "ThemeToolsIconsChanged", "ThemeToolsReady" },
+    callback = function()
+      request(false)
+    end,
+  })
   api.nvim_create_autocmd({ "BufAdd", "BufDelete", "BufWipeout", "BufFilePost", "FileType" }, {
     group = group,
     callback = function()

@@ -126,6 +126,13 @@ local function render(s)
     end
     if enabled ~= false and item.action then
       assert(type(item.key) == "string" and item.key ~= "", "dashboard key must be nonempty")
+      item = vim.tbl_extend("force", {}, item)
+      if type(item.icon) == "string" and item.icon ~= "" then
+        local name = item.icon_name or (item.desc or item.key or "custom"):lower():gsub("%W+", "_")
+        local icon =
+          require("ui_tools.icons").get(item.icon_category or "ui", name, item.icon:gsub("%s+$", ""))
+        item.icon = icon ~= "" and (icon .. " ") or ""
+      end
       s.items[#s.items + 1] = item
       vim.keymap.set("n", item.key, function()
         run(s, item)
@@ -249,7 +256,7 @@ local function open(opts, startup)
   })
   api.nvim_create_autocmd("User", {
     group = s.group,
-    pattern = { "VeryLazy", "LazyVimStarted" },
+    pattern = { "VeryLazy", "LazyVimStarted", "ThemeToolsIconsChanged", "ThemeToolsReady" },
     callback = function()
       render(s)
     end,

@@ -51,11 +51,22 @@ try:
     location = next(i for i in range(len(row) - 2) if [c for c, _ in row[i:i + 3]] == ["1", ":", "1"])
     assert ui.attrs[ui.grid[-2][location][1]].get("background") == 0x88AAFF
     assert ui.attrs[ui.grid[-2][location][1]].get("foreground") == 0x000000
+    assert " NORMAL" in status() and "" in status() and "" in status(), status()
+    base = lua("return api.nvim_get_hl(0,{name='UiToolsStatus',link=false}).bg")
+    alt = lua("return api.nvim_get_hl(0,{name='UiToolsStatusAlt',link=false}).bg")
+    assert base is not None and alt is not None and base != alt
+    edge_col = next(i for i, (c, _) in enumerate(ui.grid[-2]) if c == "")
+    assert ui.attrs[ui.grid[-2][edge_col][1]].get("foreground") == 0x88AAFF
+    assert ui.attrs[ui.grid[-2][edge_col][1]].get("background") == base
+    # The wide filename precedes encoding; locate cells rather than string offsets.
+    encoding = next(i for i in range(len(row)-4) if "".join(c for c, _ in ui.grid[-2][i:i+5]) == "utf-8")
+    assert ui.attrs[ui.grid[-2][encoding][1]].get("background") == alt
     keys("i")
     assert "INSERT" in status(), screen()
     col = next(i for i, (c, _) in enumerate(ui.grid[-2]) if c == "I")
     assert ui.attrs[ui.grid[-2][col][1]].get("background") == 0x88FF88
     assert ui.attrs[ui.grid[-2][col][1]].get("foreground") == 0x000000
+    assert ui.attrs[ui.grid[-2][edge_col][1]].get("foreground") == 0x88FF88
 
     lua("""
       queries=0; old_count=vim.diagnostic.count; old_clients=vim.lsp.get_clients
@@ -106,6 +117,11 @@ try:
       api.nvim_exec_autocmds('User',{pattern='GitToolsUpdate'})
     """)
     assert "E1" in status() and "main" in status() and "+2" in status(), status()
+    # Git/diagnostic foreground colors must not punch holes in the section background.
+    row = ui.grid[-2]
+    for label in ("main", "+2", "E1"):
+        index = next(i for i in range(len(row)-len(label)+1) if "".join(c for c, _ in row[i:i+len(label)]) == label)
+        assert ui.attrs[row[index][1]].get("background") == alt
     lua("vim.diagnostic.reset(ns)")
     # :checkhealth opens a tab when the source buffer is nonempty. Deferred
     # updates must still resolve the source window's cwd in its original tab.

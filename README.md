@@ -283,8 +283,9 @@ require("ui_tools").setup({
     refresh = 30, -- milliseconds; event bursts share one update
     force = false, -- preserve existing custom statuslines by default
     exclude = { "ui_tools_dashboard" },
-    component_separator = "", -- e.g. "│"
-    section_separator = "",
+    icons = true, -- follows theme-tools' icon policy when available
+    component_separator = "│",
+    section_separator = { left = "", right = "" },
     sections = {
       a = { "mode" },
       b = { "branch", "diff", "diagnostics" },
@@ -305,6 +306,14 @@ shows the defaults. `cwd` is also available. `filename.path` accepts `relative`,
 `location` uses one-based line and byte column. `progress` shows Top, Bot or a
 percentage; `lsp` lists attached client names. The recording indicator shows the
 active register. Components that have no data disappear.
+Sections use solid theme-derived backgrounds, with brighter surfaces for Git and
+file metadata, and mode-colored ends. Diagnostics and custom component colors
+retain their foreground on the section background. Separators follow adjoining
+backgrounds, including when components disappear in narrow windows.
+Icons are cached with component text. Set `icons = false` to hide default icons,
+or use `{ "branch", icon = "..." }` / `icon = false` for a single component.
+A string `section_separator` applies to both sides. For a font-free bar, use
+`icons = false, section_separator = "│"`; set either separator to `""` to omit it.
 `diagnostics` uses your native diagnostic sign symbols followed by each count,
 falling back to E/W/I/H. Override them per component with
 `{ "diagnostics", symbols = { error = "✖", warn = "▲", info = "●", hint = "◆" } }`.

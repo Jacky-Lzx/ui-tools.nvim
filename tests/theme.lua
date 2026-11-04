@@ -17,6 +17,7 @@ local config = {
   dracula = false,
   default = "theme-tools-mocha",
   themes = { "theme-tools-mocha", "morning", "desert" },
+  icons = { default = "ascii" },
 }
 local function rgb(value)
   return value == "NONE" and nil or tonumber(value:sub(2), 16)
@@ -25,7 +26,9 @@ local function check()
   local c = themes.palette()
   t.eq(rgb(c.ui.border), api.nvim_get_hl(0, { name = "UiToolsStatusSeparator", link = false }).fg)
   t.eq(rgb(c.ui.accent), api.nvim_get_hl(0, { name = "UiToolsStatusNormal", link = false }).bg)
-  t.eq(rgb(c.ui.bg), api.nvim_get_hl(0, { name = "UiToolsStatus", link = false }).bg)
+  local status_bg = api.nvim_get_hl(0, { name = "UiToolsStatus", link = false }).bg
+  t.eq(rgb(c.ui.bg ~= "NONE" and c.ui.bg or c.palette.bg), status_bg)
+  assert(status_bg ~= api.nvim_get_hl(0, { name = "UiToolsStatusAlt", link = false }).bg)
   t.eq(rgb(c.ui.selection_bg), api.nvim_get_hl(0, { name = "UiToolsBufferCurrent", link = false }).bg)
   t.eq(
     rgb(c.ui.bg ~= "NONE" and c.ui.bg or c.palette.bg),
@@ -55,6 +58,14 @@ assert(
 assert(before.bg == 0x123456)
 ui.setup(opts)
 check()
+local line = require("ui_tools.statusline")
+assert(line.render():find("? NORMAL", 1, true), line.render())
+assert(themes.icons.set("none"))
+vim.wait(60)
+assert(not line.render():find("? NORMAL", 1, true), line.render())
+assert(themes.icons.set("ascii"))
+vim.wait(60)
+assert(line.render():find("? NORMAL", 1, true), line.render())
 -- Rendering must use cached highlights, never resolve the palette itself.
 local get = themes.palette
 themes.palette = function()

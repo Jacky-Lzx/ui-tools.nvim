@@ -57,6 +57,16 @@ for _, fragment in ipairs({
   assert(value:find(fragment, 1, true), fragment .. ": " .. value)
 end
 t.eq(1, queries)
+for _, fragment in ipairs({
+  " NORMAL",
+  " feature/%branch",
+  " /tmp/ui-tools-statusline/",
+  "",
+  "",
+  "│",
+}) do
+  assert(value:find(fragment, 1, true), fragment .. ": " .. value)
+end
 
 -- Cursor redraws read only bounded native state, never providers or filesystem APIs.
 local get_clients, count, list_bufs, system =
@@ -64,6 +74,8 @@ local get_clients, count, list_bufs, system =
 local function forbidden()
   error("expensive provider in statusline render")
 end
+local icon_get, get_hl = require("ui_tools.icons").get, api.nvim_get_hl
+require("ui_tools.icons").get, api.nvim_get_hl = forbidden, forbidden
 vim.lsp.get_clients, vim.diagnostic.count, api.nvim_list_bufs, vim.fn.system =
   forbidden, forbidden, forbidden, forbidden
 for row = 1, 3 do
@@ -72,6 +84,7 @@ for row = 1, 3 do
 end
 vim.lsp.get_clients, vim.diagnostic.count, api.nvim_list_bufs, vim.fn.system =
   get_clients, count, list_bufs, system
+require("ui_tools.icons").get, api.nvim_get_hl = icon_get, get_hl
 t.eq(1, queries)
 vim.b.git_tools_status = { head = "updated", added = 4 }
 api.nvim_exec_autocmds("User", { pattern = "GitToolsUpdate" })
@@ -104,6 +117,20 @@ line.setup({
 assert(text():find("▲2 ◆3", 1, true), text())
 vim.diagnostic.reset(ns, a)
 vim.diagnostic.config({ signs = native_signs })
+line.setup({ globalstatus = true })
+
+-- Plain separators and icon opt-outs keep font-free/custom layouts available.
+line.setup({
+  globalstatus = true,
+  icons = false,
+  component_separator = "|",
+  section_separator = ">",
+  sections = { a = { { "mode", icon = "N%" } }, c = { { "filename", icon = false } } },
+})
+value = text()
+assert(value:find("N% NORMAL", 1, true), value)
+assert(not value:find("", 1, true) and not value:find("", 1, true), value)
+assert(value:find(">", 1, true) and value:find("|", 1, true), value)
 line.setup({ globalstatus = true })
 
 -- Each window uses its own buffer metadata, cursor and active/inactive sections.

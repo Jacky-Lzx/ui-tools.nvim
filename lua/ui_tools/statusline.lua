@@ -2,6 +2,7 @@ local M = { enabled = false, errors = {} }
 local api = vim.api
 local bar = require("ui_tools.bar")
 local util = require("ui_tools.util")
+local icons = require("ui_tools.icons")
 local format = "%!v:lua.require'ui_tools.statusline'.render()"
 local windows, blocked, cache, frames, dirty = {}, {}, {}, {}, {}
 local buffers = {}
@@ -32,13 +33,30 @@ local priorities = {
   cwd = 30,
 }
 local dynamic = { mode = true, progress = true, location = true, recording = true }
+local modes = { "Normal", "Insert", "Visual", "Replace", "Command", "Terminal" }
+local component_colors = {}
+
+local function blend(bg, fg, amount)
+  local function number(color)
+    return type(color) == "number" and color or tonumber(color:sub(2), 16)
+  end
+  bg, fg = number(bg), number(fg)
+  local result = 0
+  for _, shift in ipairs({ 16, 8, 0 }) do
+    local a, b = math.floor(bg / 2 ^ shift) % 256, math.floor(fg / 2 ^ shift) % 256
+    result = result + math.floor(a + (b - a) * amount + 0.5) * 2 ^ shift
+  end
+  return result
+end
 
 local function highlights(c)
+  component_colors = {}
   if c then
+    local bg = c.ui.bg ~= "NONE" and c.ui.bg or c.palette.bg
     local groups = {
-      UiToolsStatus = { fg = c.ui.fg, bg = c.ui.bg },
-      UiToolsStatusAlt = { fg = c.ui.fg, bg = c.ui.bg },
-      UiToolsStatusInactive = { fg = c.ui.muted, bg = c.ui.bg },
+      UiToolsStatus = { fg = c.ui.fg, bg = bg },
+      UiToolsStatusAlt = { fg = c.ui.fg, bg = blend(bg, c.ui.fg, 0.09) },
+      UiToolsStatusInactive = { fg = c.ui.muted, bg = bg },
       UiToolsStatusDiff = { fg = c.git.change },
       UiToolsStatusError = { fg = c.diagnostic.error },
       UiToolsStatusWarn = { fg = c.diagnostic.warn },
@@ -58,36 +76,59 @@ local function highlights(c)
     for name, value in pairs(groups) do
       api.nvim_set_hl(0, name, value)
     end
-    return
-  end
-  util.hl({
-    UiToolsStatus = "StatusLine",
-    UiToolsStatusAlt = "StatusLine",
-    UiToolsStatusInactive = "StatusLineNC",
-    UiToolsStatusDiff = "Special",
-    UiToolsStatusError = "DiagnosticError",
-    UiToolsStatusWarn = "DiagnosticWarn",
-    UiToolsStatusInfo = "DiagnosticInfo",
-    UiToolsStatusHint = "DiagnosticHint",
-  })
-  local normal = api.nvim_get_hl(0, { name = "Normal", link = false })
-  for mode, source in pairs({
-    Normal = "Function",
-    Insert = "String",
-    Visual = "Statement",
-    Replace = "DiagnosticError",
-    Command = "Constant",
-    Terminal = "Special",
-  }) do
-    local accent = api.nvim_get_hl(0, { name = source, link = false })
-    local color = accent.fg or normal.fg
-    api.nvim_set_hl(0, "UiToolsStatus" .. mode, {
-      default = true,
-      fg = 0x000000,
-      bg = color,
-      bold = true,
-      reverse = color == nil,
+  else
+    util.hl({
+      UiToolsStatusDiff = "Special",
+      UiToolsStatusError = "DiagnosticError",
+      UiToolsStatusWarn = "DiagnosticWarn",
+      UiToolsStatusInfo = "DiagnosticInfo",
+      UiToolsStatusHint = "DiagnosticHint",
     })
+    local normal = api.nvim_get_hl(0, { name = "Normal", link = false })
+    local comment = api.nvim_get_hl(0, { name = "Comment", link = false })
+    local bg = normal.bg or (vim.o.background == "light" and 0xffffff or 0x202020)
+    local fg = normal.fg or (vim.o.background == "light" and 0x202020 or 0xffffff)
+    -- Keep solid surfaces even with transparent or reversed native bars.
+    api.nvim_set_hl(0, "UiToolsStatus", { default = true, fg = fg, bg = bg })
+    api.nvim_set_hl(0, "UiToolsStatusAlt", {
+      default = true,
+      fg = fg,
+      bg = blend(bg, fg, 0.09),
+    })
+    api.nvim_set_hl(0, "UiToolsStatusInactive", {
+      default = true,
+      fg = comment.fg or blend(bg, fg, 0.55),
+      bg = bg,
+    })
+    for mode, source in pairs({
+      Normal = "Function",
+      Insert = "String",
+      Visual = "Statement",
+      Replace = "DiagnosticError",
+      Command = "Constant",
+      Terminal = "Special",
+    }) do
+      local accent = api.nvim_get_hl(0, { name = source, link = false })
+      local color = accent.fg or fg
+      api.nvim_set_hl(0, "UiToolsStatus" .. mode, {
+        default = true,
+        fg = 0x000000,
+        bg = color,
+        bold = true,
+        reverse = color == nil,
+      })
+    end
+  end
+  -- All color resolution happens on theme changes, never during a redraw.
+  local surfaces = vim.list_extend({ "", "Alt", "Inactive" }, modes)
+  local muted = c and c.ui.muted or api.nvim_get_hl(0, { name = "Comment", link = false }).fg
+  for _, from in ipairs(surfaces) do
+    local a = api.nvim_get_hl(0, { name = "UiToolsStatus" .. from, link = false })
+    api.nvim_set_hl(0, "UiToolsStatusDivider" .. from, { fg = muted or a.fg, bg = a.bg })
+    for _, to in ipairs(surfaces) do
+      local b = api.nvim_get_hl(0, { name = "UiToolsStatus" .. to, link = false })
+      api.nvim_set_hl(0, "UiToolsStatusEdge" .. from .. "To" .. to, { fg = a.bg, bg = b.bg })
+    end
   end
 end
 
@@ -293,6 +334,63 @@ local function context(win, active)
   }
 end
 
+local function surface(section, active, color)
+  if not active then
+    return "Inactive"
+  end
+  if section == "a" or section == "z" then
+    return color
+  end
+  return (section == "b" or section == "y") and "Alt" or ""
+end
+
+local function component_color(source, section)
+  if not source then
+    return
+  end
+  source = bar.highlight(source)
+  local result = {}
+  for _, mode in ipairs(modes) do
+    local background = surface(section, true, mode)
+    local name = "UiToolsStatusComponent_" .. source .. "_" .. background
+    if not component_colors[name] then
+      local hl = api.nvim_get_hl(0, { name = source, link = false })
+      local base = api.nvim_get_hl(0, { name = "UiToolsStatus" .. background, link = false })
+      hl.bg, hl.reverse = base.bg, nil
+      api.nvim_set_hl(0, name, hl)
+      component_colors[name] = true
+    end
+    result[mode] = name
+  end
+  return result
+end
+
+local function component_icon(kind, data, spec)
+  if spec.icon == false or not M.options.icons and spec.icon == nil then
+    return ""
+  end
+  if type(spec.icon) == "string" then
+    return spec.icon ~= "" and (bar.text(spec.icon) .. " ") or ""
+  end
+  if kind == "filename" or kind == "filetype" then
+    return icons.prefix(
+      kind == "filename" and "file" or "filetype",
+      kind == "filename" and data.tail or data.filetype,
+      ""
+    )
+  end
+  local symbols = {
+    mode = { "ui", "mode", "" },
+    branch = { "git", "branch", "" },
+    lsp = { "ui", "lsp", "" },
+    location = { "ui", "location", "" },
+    fileformat = { "ui", "line_ending", "↵" },
+    cwd = { "directory", "cwd", "" },
+  }
+  local icon = symbols[kind]
+  return icon and icons.prefix(unpack(icon)) or ""
+end
+
 local function compile(layout, data, ctx)
   local result = {}
   for section_index, section in ipairs(sections) do
@@ -311,6 +409,7 @@ local function compile(layout, data, ctx)
         if spec.cond and not spec.cond(ctx) then
           return
         end
+        item.icon = component_icon(kind, data, spec)
         if dynamic[kind] and not spec.fmt then
           item.dynamic = true
         else
@@ -324,12 +423,14 @@ local function compile(layout, data, ctx)
             text = spec.fmt(text, ctx)
           end
           text = bar.text(text)
+          text = text ~= "" and (item.icon .. text) or ""
           if spec.max_width then
             text = bar.truncate(text, spec.max_width)
           end
           item.text, item.escaped, item.width = text, bar.escape(text), bar.width(text)
           item.color = spec.color or color
         end
+        item.colors = component_color(item.color, section)
         result[#result + 1] = item
       end
       -- Like native statusline expressions, user callbacks see the target
@@ -354,6 +455,7 @@ local function update()
   end
   synchronize()
   local used = {}
+  component_colors = {}
   M.errors = {}
   for win in pairs(windows) do
     local buf = api.nvim_win_get_buf(win)
@@ -411,22 +513,28 @@ local function request(kind, buf)
   queue.request()
 end
 
-local function separator(a, b)
-  if not a or not b or a.side ~= b.side then
-    return ""
-  end
-  return a.section == b.section and M.options.component_separator or M.options.section_separator
-end
-
 local function measure(nodes)
   local total = 0
   for i, node in ipairs(nodes) do
     local previous = nodes[i - 1]
     local spacing = previous
         and previous.side == node.side
-        and (previous.section == node.section and M.options.component_width or M.options.section_width)
+        and (previous.section == node.section and M.options.component_width or M.options.section_width[node.side])
       or 0
     total = total + node.width + 2 + spacing
+    if
+      node.side == "left"
+      and (not nodes[i + 1] or nodes[i + 1].side ~= "left")
+      and node.surface ~= node.base
+    then
+      total = total + M.options.section_width.left
+    elseif
+      node.side == "right"
+      and (not previous or previous.side ~= "right")
+      and node.surface ~= node.base
+    then
+      total = total + M.options.section_width.right
+    end
   end
   return total
 end
@@ -463,6 +571,7 @@ function M.render()
     return bar.render_profile(layout, width, active and "UiToolsStatus" or "UiToolsStatusInactive")
   end
   local label, color = mode()
+  local base_surface = active and "" or "Inactive"
   local buf = api.nvim_win_get_buf(win)
   local ctx = { mode = label, cursor = api.nvim_win_get_cursor(win), lines = api.nvim_buf_line_count(buf) }
   local nodes = {}
@@ -470,6 +579,7 @@ function M.render()
     local text, escaped, length = item.text, item.escaped, item.width
     if item.dynamic then
       text = bar.text(value(item.kind, {}, ctx, item.spec))
+      text = text ~= "" and (item.icon .. text) or ""
       if item.spec.max_width then
         text = bar.truncate(text, item.spec.max_width)
       end
@@ -484,6 +594,8 @@ function M.render()
         side = item.side,
         priority = item.priority,
         item = item,
+        surface = surface(item.section, active, color),
+        base = base_surface,
       }
     end
   end
@@ -504,19 +616,50 @@ function M.render()
     table.remove(nodes, drop)
   end
   if #nodes == 1 and measure(nodes) > width then
-    shorten(nodes[1], math.max(0, width - 2))
+    shorten(nodes[1], math.max(0, nodes[1].width - (measure(nodes) - width)))
   end
   local base = active and "UiToolsStatus" or "UiToolsStatusInactive"
   local result, right = { "%#" .. base .. "#" }, false
+  local function edge(from, to, side)
+    local glyph = M.options.section_separator[side]
+    if glyph == "" then
+      return
+    end
+    -- Right-pointing glyphs paint the departing surface; left-pointing ones
+    -- paint the arriving surface. Both share the cached transition palette.
+    local a, b = from, to
+    if side == "right" then
+      a, b = to, from
+    end
+    result[#result + 1] = "%#UiToolsStatusEdge" .. a .. "To" .. b .. "#" .. bar.escape(glyph)
+  end
   for i, node in ipairs(nodes) do
+    local previous = nodes[i - 1]
     if node.side == "right" and not right then
       result[#result + 1], right = "%#" .. base .. "#%=", true
+      if node.surface ~= base_surface then
+        edge(base_surface, node.surface, "right")
+      end
     end
-    result[#result + 1] = bar.escape(separator(nodes[i - 1], node))
-    local hl = active
-        and (node.item.color or ((node.section == "a" or node.section == "z") and "UiToolsStatus" .. color) or ((node.section == "b" or node.section == "y") and "UiToolsStatusAlt") or base)
-      or base
-    result[#result + 1] = "%#" .. bar.highlight(hl) .. "# " .. node.escaped .. " %*"
+    if previous and previous.side == node.side then
+      if previous.section == node.section then
+        result[#result + 1] = "%#UiToolsStatusDivider"
+          .. node.surface
+          .. "#"
+          .. bar.escape(M.options.component_separator)
+      else
+        edge(previous.surface, node.surface, node.side)
+      end
+    end
+    local hl = active and node.item.colors and node.item.colors[color] or "UiToolsStatus" .. node.surface
+    result[#result + 1] = "%#" .. bar.highlight(hl) .. "# " .. node.escaped .. " "
+    if
+      node.side == "left"
+      and (not nodes[i + 1] or nodes[i + 1].side ~= "left")
+      and node.surface ~= base_surface
+    then
+      edge(node.surface, base_surface, "left")
+    end
   end
   if not right then
     result[#result + 1] = "%#" .. base .. "#%="
@@ -565,6 +708,10 @@ local function normalize(layout)
         not spec.symbols or type(spec.symbols) == "table",
         "statusline component.symbols must be a table"
       )
+      assert(
+        spec.icon == nil or spec.icon == false or type(spec.icon) == "string",
+        "statusline component.icon must be text or false"
+      )
       items[#items + 1] = spec
       custom = custom or type(spec[1]) == "function" or spec.cond ~= nil or spec.fmt ~= nil
     end
@@ -582,21 +729,31 @@ function M.setup(opts)
     filetypes = {},
     force = false,
     exclude = { "ui_tools_dashboard" },
-    component_separator = "",
-    section_separator = "",
+    icons = true,
+    component_separator = "│",
+    section_separator = { left = "", right = "" },
   }, opts)
   config.sections = vim.tbl_extend("force", vim.deepcopy(defaults), opts.sections or {})
   config.inactive_sections = vim.tbl_extend("force", vim.deepcopy(inactive), opts.inactive_sections or {})
   assert(type(config.refresh) == "number" and config.refresh >= 0, "statusline.refresh must be nonnegative")
   assert(type(config.globalstatus) == "boolean", "statusline.globalstatus must be boolean")
+  assert(type(config.icons) == "boolean", "statusline.icons must be boolean")
+  if type(config.section_separator) == "string" then
+    config.section_separator = { left = config.section_separator, right = config.section_separator }
+  end
   assert(
-    type(config.component_separator) == "string" and type(config.section_separator) == "string",
-    "statusline separators must be strings"
+    type(config.component_separator) == "string"
+      and type(config.section_separator) == "table"
+      and type(config.section_separator.left) == "string"
+      and type(config.section_separator.right) == "string",
+    "statusline separators must be text or a { left, right } section pair"
   )
-  config.component_separator, config.section_separator =
-    bar.text(config.component_separator), bar.text(config.section_separator)
-  config.component_width, config.section_width =
-    bar.width(config.component_separator), bar.width(config.section_separator)
+  config.component_separator = bar.text(config.component_separator)
+  config.component_width, config.section_width = bar.width(config.component_separator), {}
+  for _, side in ipairs({ "left", "right" }) do
+    config.section_separator[side] = bar.text(config.section_separator[side])
+    config.section_width[side] = bar.width(config.section_separator[side])
+  end
   custom = bar.validate_profiles(config.filetypes)
   normalize(config.sections)
   normalize(config.inactive_sections)
@@ -659,9 +816,9 @@ function M.setup(opts)
   })
   api.nvim_create_autocmd("User", {
     group = group,
-    pattern = { "GitToolsUpdate", "GitSignsUpdate" },
-    callback = function()
-      request("git")
+    pattern = { "GitToolsUpdate", "GitSignsUpdate", "ThemeToolsIconsChanged", "ThemeToolsReady" },
+    callback = function(args)
+      request((args.match == "GitToolsUpdate" or args.match == "GitSignsUpdate") and "git" or nil)
     end,
   })
   api.nvim_create_autocmd({ "ModeChanged", "RecordingEnter", "RecordingLeave" }, {

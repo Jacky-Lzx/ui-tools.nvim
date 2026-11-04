@@ -18,6 +18,7 @@ python3 tests/context_menu_ui.py
 python3 tests/context_lsp_ui.py
 python3 tests/dashboard_ui.py
 python3 tests/dashboard_startup_ui.py
+python3 tests/dashboard_bufferline_ui.py
 python3 tests/bufferline_ui.py
 python3 tests/statusline_ui.py
 stylua --check lua tests examples

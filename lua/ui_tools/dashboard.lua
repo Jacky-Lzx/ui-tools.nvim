@@ -32,6 +32,35 @@ local window_options = {
   scrolloff = 0,
 }
 
+local function retire_startup_source(s)
+  if not s.startup_source then
+    return
+  end
+  -- BufWinLeave runs before the replacement is installed. Wait until the
+  -- picker/file action (or close(), which restores the source) has completed.
+  vim.schedule(function()
+    local buf = s.source
+    if
+      not api.nvim_buf_is_valid(buf)
+      or active and active.source == buf
+      or api.nvim_buf_get_changedtick(buf) ~= s.source_tick
+      or api.nvim_buf_get_name(buf) ~= ""
+      or vim.bo[buf].buftype ~= ""
+      or vim.bo[buf].modified
+      or api.nvim_buf_line_count(buf) ~= 1
+      or api.nvim_buf_get_lines(buf, 0, 1, false)[1] ~= ""
+    then
+      return
+    end
+    for _, win in ipairs(api.nvim_list_wins()) do
+      if api.nvim_win_get_buf(win) == buf then
+        return
+      end
+    end
+    pcall(api.nvim_buf_delete, buf, { force = false })
+  end)
+end
+
 local function release(s)
   if active ~= s then
     return
@@ -45,6 +74,7 @@ local function release(s)
       end
     end
   end
+  retire_startup_source(s)
 end
 
 local function select_item(s, index)
@@ -146,7 +176,7 @@ function M.close()
   end
 end
 
-function M.open(opts)
+local function open(opts, startup)
   M.close()
   opts = vim.tbl_deep_extend("force", defaults, M.options or {}, opts or {})
   assert(
@@ -171,6 +201,7 @@ function M.open(opts)
     opts = opts,
     selected = 1,
     saved = {},
+    startup_source = startup,
   }
   assert(api.nvim_win_get_config(s.win).relative == "", "dashboard requires a normal window")
   -- Use normal buffer switching rules so an unsaved source cannot be discarded.
@@ -180,6 +211,7 @@ function M.open(opts)
     s.buf = api.nvim_create_buf(false, true)
     api.nvim_win_set_buf(s.win, s.buf)
   end
+  s.source_tick = api.nvim_buf_is_valid(s.source) and api.nvim_buf_get_changedtick(s.source) or nil
   for name, value in pairs(window_options) do
     s.saved[name] = vim.wo[s.win][name]
     vim.wo[s.win][name] = value
@@ -247,6 +279,10 @@ function M.open(opts)
   return s.buf
 end
 
+function M.open(opts)
+  return open(opts, false)
+end
+
 local function autostart()
   if not M.enabled or M.attempted or #api.nvim_list_uis() == 0 then
     return
@@ -270,7 +306,7 @@ local function autostart()
   then
     return
   end
-  M.open()
+  open(nil, true)
 end
 
 function M.setup(opts)

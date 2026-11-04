@@ -71,6 +71,9 @@ footer and art, and the menu scrolls. It refreshes on `VeryLazy`/`LazyVimStarted
 the footer can display lazy.nvim startup statistics. Window options are restored
 when leaving or disabling the dashboard, preserving later option changes. Source
 buffers retain unsaved text. No global display options or mappings are changed.
+When leaving the automatic startup dashboard, its original empty placeholder is
+removed only if it remains unchanged and no window uses it. Closing the dashboard
+back to that buffer keeps it; manually opened dashboards preserve their source.
 The dashboard disables cursorline while open. Colors use
 `UiToolsDashboardHeader`, `UiToolsDashboardDesc` (Function),
 `UiToolsDashboardIcon` (DiagnosticHint), `UiToolsDashboardKey` and

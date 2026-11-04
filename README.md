@@ -70,7 +70,10 @@ truncated to fit. In extremely short windows, actions take priority over the
 footer and art, and the menu scrolls. It refreshes on `VeryLazy`/`LazyVimStarted`, so
 the footer can display lazy.nvim startup statistics. Window options are restored
 when leaving or disabling the dashboard, preserving later option changes. Source
-buffers retain unsaved text. No global display options or mappings are changed.
+buffers retain unsaved text. The dashboard temporarily hides the statusline
+(`laststatus = 0`) and restores its previous setting on exit, unless a later owner
+changed it. The command-area ruler is hidden/restored the same way. No global
+mappings are changed.
 When leaving the automatic startup dashboard, its original empty placeholder is
 removed only if it remains unchanged and no window uses it. Closing the dashboard
 back to that buffer keeps it; manually opened dashboards preserve their source.

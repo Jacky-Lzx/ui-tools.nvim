@@ -199,7 +199,7 @@ local function update()
       changed = false -- The geometry redraw already used the new string.
     end
   end
-  if changed then
+  if changed and vim.v.vim_did_enter == 1 then
     vim.cmd("redrawtabline")
   end
 end

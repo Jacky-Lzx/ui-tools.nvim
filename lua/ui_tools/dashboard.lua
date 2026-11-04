@@ -22,6 +22,7 @@ local window_options = {
   signcolumn = "no",
   foldcolumn = "0",
   statuscolumn = "",
+  statusline = " ",
   cursorline = false,
   cursorcolumn = false,
   wrap = false,
@@ -67,6 +68,12 @@ local function release(s)
   end
   active = nil
   pcall(api.nvim_del_augroup_by_id, s.group)
+  if vim.o.laststatus == 0 then
+    vim.o.laststatus = s.laststatus
+  end
+  if not vim.o.ruler then
+    vim.o.ruler = s.ruler
+  end
   if api.nvim_win_is_valid(s.win) then
     for name, value in pairs(s.saved) do
       if vim.wo[s.win][name] == window_options[name] then
@@ -201,6 +208,8 @@ local function open(opts, startup)
     opts = opts,
     selected = 1,
     saved = {},
+    laststatus = vim.o.laststatus,
+    ruler = vim.o.ruler,
     startup_source = startup,
   }
   assert(api.nvim_win_get_config(s.win).relative == "", "dashboard requires a normal window")
@@ -261,7 +270,16 @@ local function open(opts, startup)
     end,
   })
   vim.bo[s.buf].filetype = "ui_tools_dashboard"
-  render(s)
+  vim.o.ruler = false
+  if vim.o.laststatus ~= 0 then
+    require("ui_tools.bar").preserve_views(function()
+      vim.o.laststatus = 0
+      render(s)
+    end)
+    select_item(s, s.selected)
+  else
+    render(s)
+  end
   for _, key in ipairs({ "j", "<Down>", "<Tab>" }) do
     vim.keymap.set("n", key, function()
       select_item(s, s.selected + 1)

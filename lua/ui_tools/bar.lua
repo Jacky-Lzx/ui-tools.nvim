@@ -53,7 +53,11 @@ function M.preserve_views(callback)
     end
   end
   callback()
-  vim.cmd("redraw!")
+  -- Startup chrome changes must settle with the first normal redraw. Forcing
+  -- one before VimEnter can expose the builtin intro before the dashboard.
+  if vim.v.vim_did_enter == 1 then
+    vim.cmd("redraw!")
+  end
   for win, item in pairs(views) do
     if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == item.buf then
       vim.api.nvim_win_call(win, function()

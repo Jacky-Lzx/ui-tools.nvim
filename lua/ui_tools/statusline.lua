@@ -141,7 +141,9 @@ local function synchronize()
       blocked[win] = nil
     end
   end
-  if next(windows) and not previous_laststatus then
+  local dashboard = package.loaded["ui_tools.dashboard"]
+  local dashboard_active = dashboard and dashboard.state() ~= nil
+  if next(windows) and not previous_laststatus and not dashboard_active then
     previous_laststatus = vim.o.laststatus
     applied_laststatus = M.options.globalstatus and 3 or 2
     if vim.o.laststatus ~= applied_laststatus then
@@ -340,7 +342,9 @@ local function update()
     end
   end
   dirty, all_dirty = {}, false
-  vim.cmd("redrawstatus")
+  if vim.v.vim_did_enter == 1 then
+    vim.cmd("redrawstatus")
+  end
 end
 
 local function request(kind, buf)

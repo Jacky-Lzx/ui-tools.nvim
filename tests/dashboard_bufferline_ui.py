@@ -10,7 +10,7 @@ signal.alarm(40)
 
 
 class Dashboard:
-    def __init__(self, path, manual=False):
+    def __init__(self, path, manual=False, globalstatus=False, statusline=True):
         env = dict(os.environ, UI_TOOLS_DASHBOARD_FILE=str(path))
         self.ui = Capture(env)
         self.ui.request("nvim_ui_attach", [100, 24, {"rgb": True, "ext_linegrid": True}])
@@ -24,14 +24,19 @@ class Dashboard:
           end
         """)
         self.lua("""
-          ui.setup({bufferline={auto_hide=-1},dashboard={autostart=%s, keys={
+          vim.o.laststatus=%s
+          ui.setup({bufferline={auto_hide=-1},statusline=%s,dashboard={autostart=%s, keys={
             {key='f',desc='Find File',action=choose},
             {key='n',desc='New File',action='enew | startinsert'},
           }}})
           %s
           vim.wait(60)
-        """ % ("false" if manual else "true", "d.open()" if manual else ""))
+        """ % (3 if globalstatus else 2,
+               ("{globalstatus=true}" if globalstatus else "true") if statusline else "false",
+               "false" if manual else "true", "d.open()" if manual else ""))
         assert self.lua("return d.state() ~= nil")
+        assert self.lua("return vim.o.laststatus") == 0
+        assert self.lua("return api.nvim_win_get_position(0)[1]+api.nvim_win_get_height(0)==vim.o.lines-vim.o.cmdheight")
 
     def lua(self, code):
         return self.ui.request("nvim_exec_lua", [code, []])
@@ -53,6 +58,7 @@ with tempfile.TemporaryDirectory(prefix="ui-tools-dashboard-buffers-") as direct
             if case == "close":
                 test.lua("d.close(); vim.wait(60)")
                 assert test.lua("return api.nvim_get_current_buf()==source and vim.bo[source].buflisted")
+                assert test.lua("return vim.o.laststatus") == 2
                 continue
             if case == "other_empty":
                 test.lua("user_empty=api.nvim_create_buf(true,false)")
@@ -70,6 +76,7 @@ with tempfile.TemporaryDirectory(prefix="ui-tools-dashboard-buffers-") as direct
                 continue
             test.keys("f")
             assert test.lua("return d.state()==nil and api.nvim_get_current_line()=='picked file'")
+            assert test.lua("return vim.o.laststatus") == 2
             if case in ("picked", "other_empty"):
                 assert test.lua("return not api.nvim_buf_is_valid(source)"), test.lua("return buffers.items()")
             if case == "picked":
@@ -86,4 +93,21 @@ with tempfile.TemporaryDirectory(prefix="ui-tools-dashboard-buffers-") as direct
                 assert test.lua("return api.nvim_win_get_buf(source_win)==source")
         finally:
             test.close()
+    for globalstatus in (False, True):
+        for statusline in (False, True):
+            test = Dashboard(target, globalstatus=globalstatus, statusline=statusline)
+            try:
+                # A provider refresh must not reclaim laststatus while the dashboard owns it.
+                test.lua("require('ui_tools.statusline').refresh(); vim.wait(60)")
+                assert test.lua("return vim.o.laststatus") == 0
+                test.keys("f")
+                assert test.lua("return vim.o.laststatus") == (3 if globalstatus else 2)
+                if statusline:
+                    assert test.lua("return vim.wo.statusline:find('ui_tools.statusline',1,true) ~= nil")
+                test.lua("d.open(); vim.o.laststatus=1; d.close(); vim.wait(60)")
+                assert test.lua("return vim.o.laststatus") == 1
+                test.lua("d.open(); ui.disable(); vim.wait(60)")
+                assert test.lua("return vim.o.laststatus") == 1
+            finally:
+                test.close()
     print("dashboard buffer UI: picked/new file retires startup placeholder; user buffers, edits, splits and close are preserved")

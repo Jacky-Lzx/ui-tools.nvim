@@ -40,6 +40,7 @@ local above =
 assert(above.rows[1] > 4)
 assert(not pcall(ui.dashboard, { layout = "invalid" }))
 local source = t.buffer({ "unsaved work" })
+local laststatus = vim.o.laststatus
 vim.bo[source].modified = true
 vim.o.hidden = false
 assert(not pcall(ui.dashboard), "Opening must respect modified-buffer protection")
@@ -58,7 +59,10 @@ t.eq(false, vim.bo[buf].buflisted)
 t.eq(false, vim.wo.number)
 t.eq(false, vim.wo.cursorline)
 t.eq("", vim.wo.colorcolumn)
+t.eq(0, vim.o.laststatus)
+t.eq(" ", vim.wo.statusline)
 dashboard.close()
+t.eq(laststatus, vim.o.laststatus)
 t.eq(source, vim.api.nvim_get_current_buf())
 t.eq({ "unsaved work" }, vim.api.nvim_buf_get_lines(source, 0, -1, false))
 t.eq(true, vim.bo[source].modified)

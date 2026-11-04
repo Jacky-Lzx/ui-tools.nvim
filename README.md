@@ -764,6 +764,12 @@ Run `sh tests/run.sh` (Neovim, Python 3 and StyLua required). Tests include an
 attached Neovim UI and inspect its actual redraw grid. Annotation tests also drive
 a real terminal with a PTY and check RGB output and continuous insert-mode edits.
 Use `NVIM_BIN=/path/to/nvim sh tests/run.sh` to test another Neovim release.
+The statusline and winbar Lua suites require an attached UI; run them individually
+with `python3 tests/lua_ui.py tests/statusline.lua --width 240` and
+`python3 tests/lua_ui.py tests/winbar.lua --width 180`. The harness resizes through
+the UI API and checks a normal Neovim exit, including cleanup after assertions.
+Do not enlarge `columns` in headless tests that redraw the native tabline: on
+Neovim 0.12.6 this can leave native screen/click-table allocations at the old size.
 For an optional full-configuration annotation check, run
 `UI_TOOLS_CONFIG=/path/to/nvim/init.lua python3 tests/annotations_pty.py`.
 It enables the modules and disables the old color/TODO renderers only inside

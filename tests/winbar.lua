@@ -2,7 +2,11 @@ local t = dofile("tests/helpers.lua")
 local api = vim.api
 local ui = require("ui_tools")
 local winbar = require("ui_tools.winbar")
-vim.o.columns, vim.o.hidden = 180, true
+assert(
+  #api.nvim_list_uis() > 0 and vim.o.columns == 180,
+  "Run python3 tests/lua_ui.py tests/winbar.lua --width 180"
+)
+vim.o.hidden = true
 local before = { global = vim.go.winbar, local_value = vim.wo.winbar }
 local source = t.buffer({ "first", "second" })
 api.nvim_buf_set_name(source, "/tmp/ui-tools-winbar/中文%file.lua")

@@ -3,7 +3,10 @@ local api = vim.api
 local ui = require("ui_tools")
 local line = require("ui_tools.statusline")
 local root = vim.fn.getcwd()
-vim.o.columns = 240
+assert(
+  #api.nvim_list_uis() > 0 and vim.o.columns == 240,
+  "Run python3 tests/lua_ui.py tests/statusline.lua --width 240"
+)
 local function text(win, width)
   win = win or api.nvim_get_current_win()
   return api.nvim_eval_statusline(vim.wo[win].statusline, { winid = win, maxwidth = width or 240 }).str

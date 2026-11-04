@@ -263,4 +263,48 @@ t.eq(before.laststatus, vim.o.laststatus)
 for _, win in ipairs(api.nvim_list_wins()) do
   t.eq("", api.nvim_get_option_value("statusline", { scope = "local", win = win }))
 end
+
+-- A window ID alone is resolved in the current tab by getcwd(). Updates cover
+-- hidden tabs too, and must preserve each window's local/tab-local directory.
+vim.cmd("only")
+local source_win = api.nvim_get_current_win()
+local seen = {}
+line.setup({
+  sections = { c = {
+    "cwd",
+    function(ctx)
+      seen[ctx.win] = ctx.cwd
+      return ""
+    end,
+  } },
+  inactive_sections = { c = { "cwd" } },
+})
+vim.cmd("tabnew")
+vim.cmd("tcd /tmp")
+local tab_win = api.nvim_get_current_win()
+local tab_cwd = vim.fn.fnamemodify(vim.fn.getcwd(), ":~")
+vim.cmd("tabnew")
+vim.cmd("lcd /")
+local local_win = api.nvim_get_current_win()
+local function check_directories()
+  local current = api.nvim_get_current_win()
+  line.refresh()
+  settle()
+  t.eq(current, api.nvim_get_current_win())
+  t.eq(vim.fn.fnamemodify(root, ":~"), seen[source_win])
+  t.eq("/", seen[local_win])
+  assert(text(source_win):find(seen[source_win], 1, true), text(source_win))
+  t.eq("", vim.v.errmsg)
+end
+check_directories()
+t.eq(tab_cwd, seen[tab_win])
+vim.cmd("tabmove 0")
+check_directories()
+api.nvim_set_current_win(source_win)
+check_directories()
+api.nvim_win_close(tab_win, true)
+check_directories()
+vim.cmd("tabonly!")
+settle()
+line.disable()
 print("statusline providers, caches, window context, ownership, callbacks and lifecycle passed")

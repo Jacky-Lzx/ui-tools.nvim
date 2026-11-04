@@ -274,6 +274,8 @@ end
 
 local function context(win, active)
   local buf = api.nvim_win_get_buf(win)
+  -- getcwd() defaults to the current tab, even when passed a window ID.
+  local tabnr = api.nvim_tabpage_get_number(api.nvim_win_get_tabpage(win))
   local label = mode()
   return {
     win = win,
@@ -283,7 +285,7 @@ local function context(win, active)
     cursor = api.nvim_win_get_cursor(win),
     lines = api.nvim_buf_line_count(buf),
     width = M.options.globalstatus and vim.o.columns or api.nvim_win_get_width(win),
-    cwd = bar.text(vim.fn.fnamemodify(vim.fn.getcwd(win), ":~")),
+    cwd = bar.text(vim.fn.fnamemodify(vim.fn.getcwd(win, tabnr), ":~")),
     filetype = cache[buf].filetype,
   }
 end

@@ -106,8 +106,22 @@ try:
       api.nvim_exec_autocmds('User',{pattern='GitToolsUpdate'})
     """)
     assert "E1" in status() and "main" in status() and "+2" in status(), status()
-    lua("vim.diagnostic.reset(ns); require('ui_tools').disable()")
+    lua("vim.diagnostic.reset(ns)")
+    # :checkhealth opens a tab when the source buffer is nonempty. Deferred
+    # updates must still resolve the source window's cwd in its original tab.
+    for _ in range(2):
+        keys(":checkhealth vim.lsp<CR>")
+        text = screen()
+        assert lua("return vim.bo.filetype") == "checkhealth", text
+        assert lua("return #api.nvim_list_tabpages()") == 2
+        assert "checkhealth" in status(), status()
+        assert lua("return vim.v.errmsg") == ""
+        keys(":tabclose<CR>")
+        assert "中文%file.lua" in status(), status()
+        assert lua("return api.nvim_get_current_buf()==source")
+        assert lua("return vim.v.errmsg") == ""
+    lua("require('ui_tools').disable()")
     assert lua("return not vim.wo.statusline:find('ui_tools',1,true)")
-    print("statusline native UI modes, colors, macro, 500-character burst, splits and resize passed")
+    print("statusline native UI modes, colors, macro, 500-character burst, splits, resize and checkhealth passed")
 finally:
     ui.close()

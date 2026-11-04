@@ -11,6 +11,7 @@ return {
     dashboard = { layout = "vertical" }, -- or "horizontal"; both fit automatically
     bufferline = { numbers = true, sidebar_filetypes = { NvimTree = true } },
     statusline = { globalstatus = true },
+    winbar = true, -- optional breadcrumbs callback; see README
     indent = { only_scope = true, chunk = true },
     statuscolumn = true,
     guide = { columns = { 121 }, char = "│" },

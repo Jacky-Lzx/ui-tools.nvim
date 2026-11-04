@@ -1,4 +1,4 @@
--- Shared, dependency-free helpers for the native tabline and statusline.
+-- Shared, dependency-free helpers for native tabline, statusline and winbar.
 local M = {}
 
 function M.text(value)

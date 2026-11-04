@@ -8,6 +8,7 @@ require("ui_tools").setup({
   dashboard = true,
   bufferline = true,
   statusline = true,
+  winbar = true,
   indent = { only_scope = true, chunk = true },
   statuscolumn = true,
   guide = { columns = { 121 } },
@@ -264,7 +265,47 @@ Inactive splits use `UiToolsStatusInactive` throughout. Existing custom local or
 global statuslines are preserved unless `force = true`. Disable restores local
 statuslines and `laststatus` only while their values are still owned; later
 owners' changes are preserved. Newly inherited splits return to the global
-statusline. This module does not manage winbars.
+statusline. Window bars are managed separately by `winbar`.
+
+## Window bars
+
+`winbar = true` shows a filename and cached LSP client names above each normal
+editing window, including inactive splits. Each window uses its own width and
+cursor. Special buffers, floating windows and `vim.b.ui_tools_disable` buffers
+are skipped. Enable optional breadcrumbs through a provider callback:
+
+```lua
+require("ui_tools").setup({
+  winbar = {
+    filename = true,
+    filename_width = 0.45, -- maximum fraction of the window width
+    lsp = true,
+    refresh = 30, -- coalesce deferred lifecycle/LSP events
+    force = false, -- preserve an existing winbar owner
+    exclude = { "ui_tools_dashboard" }, -- filetypes
+    breadcrumbs = function(ctx)
+      local tools = package.loaded["lsp-tools"]
+      return tools and tools.breadcrumbs({ winid = ctx.win }) or ""
+    end,
+  },
+})
+```
+
+The optional callback receives `{ win, buf, width, cursor }` and returns native
+statusline syntax. Escape untrusted text with `require("ui_tools.bar").escape()`;
+the example's lsp-tools API already escapes symbol names. Callbacks should read
+cached state and must not start requests or load providers during redraw.
+Failures are isolated in `require("ui_tools.winbar").errors`, indexed by window.
+The plugin itself never loads a breadcrumb provider.
+
+Filenames and LSP client names are escaped. Long filenames truncate by display
+cell, and native overflow truncates breadcrumbs before the filename. Client
+snapshots update on attach/detach or explicit `winbar.refresh()`, never on cursor
+motion or typing. `WinBar` and `WinBarNC` follow the optional theme-tools palette.
+An inherited split adopts its own bar; custom owners, including later deliberate
+clears, are respected. Disable restores only still-owned window-local options.
+Visibility changes preserve editing cursors/views, and transient autocmd/float
+windows defer updates until the editing context returns.
 
 ## Indentation and current block
 

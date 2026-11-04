@@ -3,6 +3,7 @@ local modules = {
   "dashboard",
   "bufferline",
   "statusline",
+  "winbar",
   "context_menu",
   "indent",
   "statuscolumn",

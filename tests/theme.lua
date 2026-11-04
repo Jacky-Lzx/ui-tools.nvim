@@ -7,7 +7,7 @@ end
 vim.opt.rtp:append(root)
 local ui = require("ui_tools")
 local api = vim.api
-local opts = { statusline = { force = true }, bufferline = { force = true, auto_hide = -1 } }
+local opts = { statusline = { force = true }, bufferline = { force = true, auto_hide = -1 }, winbar = true }
 ui.setup(opts)
 assert(not package.loaded.theme_tools, "UI setup eagerly loaded its optional theme provider")
 local themes = require("theme_tools")
@@ -27,6 +27,10 @@ local function check()
   t.eq(rgb(c.ui.accent), api.nvim_get_hl(0, { name = "UiToolsStatusNormal", link = false }).bg)
   t.eq(rgb(c.ui.bg), api.nvim_get_hl(0, { name = "UiToolsStatus", link = false }).bg)
   t.eq(rgb(c.ui.selection_bg), api.nvim_get_hl(0, { name = "UiToolsBufferCurrent", link = false }).bg)
+  t.eq(
+    rgb(c.ui.bg ~= "NONE" and c.ui.bg or c.palette.bg),
+    api.nvim_get_hl(0, { name = "WinBar", link = false }).bg
+  )
 end
 -- The UI was configured before theme-tools; ColorScheme/Ready must attach it.
 themes.setup(config)

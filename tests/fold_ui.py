@@ -77,6 +77,21 @@ try:
     assert "::5" in text, (text, lua("return {level=vim.wo.foldlevel,text=vim.wo.foldtext,method=vim.wo.foldmethod,cursor=api.nvim_win_get_cursor(0)}"))
     keys(":only<CR>:enew<CR>")
 
+    # Deferred fold commands must preserve a snippet-like Select-mode field.
+    lua("""
+      api.nvim_buf_set_lines(0,0,-1,false,{'field'})
+      api.nvim_win_set_cursor(0,{1,0}); vim.bo.modified=false
+    """)
+    keys("v4l<C-g>")
+    assert lua("return api.nvim_get_mode().mode") == "s"
+    lua("fold.setup(vim.tbl_deep_extend('force',vim.deepcopy(fold.options),{method='indent'}))")
+    screen()
+    assert lua("return api.nvim_get_mode().mode=='s' and api.nvim_get_current_line()=='field'")
+    keys("X<Esc>")
+    screen()
+    assert lua("return api.nvim_get_current_line()=='X'")
+    keys(":enew!<CR>")
+
     # Finish initialization while the first editing burst enters Insert mode.
     lua("""
       api.nvim_buf_set_lines(0,0,-1,false,{'prefix '}); vim.bo.modified=false

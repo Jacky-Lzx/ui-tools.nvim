@@ -129,6 +129,23 @@ function M.attach(win)
       if option(win, "foldmethod") ~= state.method or option(win, "foldlevel") ~= state.applied.foldlevel then
         return
       end
+      -- :normal in Select mode replaces the selected text before its commands.
+      -- A parser callback can finish while a snippet is selecting a field.
+      local mode = api.nvim_get_mode().mode
+      if mode ~= "n" and mode:sub(1, 1) ~= "i" then
+        if not state.waiting_mode then
+          state.waiting_mode = api.nvim_create_autocmd("ModeChanged", {
+            group = "UiToolsFold",
+            pattern = { "*:n", "*:i" },
+            once = true,
+            callback = function()
+              state.waiting_mode = nil
+              initialize()
+            end,
+          })
+        end
+        return
+      end
       local cursor = api.nvim_win_get_cursor(win)
       api.nvim_win_call(win, function()
         local view = vim.fn.winsaveview()

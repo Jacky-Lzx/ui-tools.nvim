@@ -102,6 +102,7 @@ vim.keymap.set("n", "[b", function() buffers.cycle(-1) end)
 vim.keymap.set("n", "]b", function() buffers.cycle(1) end)
 vim.keymap.set("n", "<A-w>", function() buffers.close() end)
 -- Other API calls: buffers.go(3), move(-1), move(1), pin(), close(buf, force).
+vim.keymap.set("n", "<A-u>", function() buffers.restore() end)
 -- buffers.items() returns ordered { buf, name, pinned } records.
 ```
 
@@ -114,6 +115,10 @@ preserves splits, respects `winfixbuf`, and supplies an empty editing buffer whe
 the last buffer closes. Pinned buffers stay together at the start; movement is
 limited to the buffer's pinned/unpinned group. Order and pins last until disable
 or setup, and are not persisted to sessions.
+`restore()` reopens the last successfully closed named buffer from disk, restores
+its position in the bar and cursor, and keeps up to 20 names in memory. It does
+not recover discarded unsaved edits or unnamed buffers. Switching protection
+still applies, and a failed restore leaves history intact.
 
 Duplicate basenames use the shortest unique path suffix. Long names and narrow
 windows truncate safely by display cell. Overflow indicators keep the current
@@ -171,6 +176,8 @@ by an existing provider. They refresh on `User GitToolsUpdate`/`GitSignsUpdate`.
 The bar never runs Git or starts a provider. Without a provider these components
 are empty. `require("ui_tools.statusline").refresh()` explicitly refreshes all
 displayed buffer data and custom components after other external changes.
+Use `statusline.update()` to schedule only custom-component updates without
+invalidating diagnostic, LSP or file snapshots.
 
 Custom components return plain text, with statusline metacharacters escaped:
 

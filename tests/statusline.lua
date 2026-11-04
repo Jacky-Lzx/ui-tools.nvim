@@ -208,6 +208,9 @@ for _ = 1, 30 do
 end
 settle()
 t.eq(previous_calls + 1, calls)
+line.update()
+settle()
+t.eq(previous_calls + 2, calls)
 assert(text():find("pos 1:1", 1, true))
 line.disable()
 

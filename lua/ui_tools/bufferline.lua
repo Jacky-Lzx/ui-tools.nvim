@@ -4,6 +4,7 @@ local bar = require("ui_tools.bar")
 local util = require("ui_tools.util")
 local format = "%!v:lua.require'ui_tools.bufferline'.render()"
 local order, entries, pinned, diagnostics = {}, {}, {}, {}
+local closed = {}
 local output, scan, queue, previous, shown = "", true, nil, nil, nil
 
 local function highlights()
@@ -304,6 +305,16 @@ function M.close(buf, force)
   if not force and (pinned[buf] or vim.bo[buf].modified) then
     return false, pinned[buf] and "Buffer is pinned" or "Buffer has unsaved changes"
   end
+  local name = api.nvim_buf_get_name(buf)
+  local cursor = { 1, 0 }
+  for _, win in ipairs(api.nvim_list_wins()) do
+    if api.nvim_win_get_buf(win) == buf then
+      cursor = api.nvim_win_get_cursor(win)
+      if win == api.nvim_get_current_win() then
+        break
+      end
+    end
+  end
   local replacement
   local index = vim.fn.index(order, buf) + 1
   replacement = order[index + 1] or order[index - 1]
@@ -336,9 +347,45 @@ function M.close(buf, force)
     if created and api.nvim_buf_is_valid(replacement) and not vim.bo[replacement].modified then
       pcall(api.nvim_buf_delete, replacement, { force = false })
     end
+  elseif name ~= "" then
+    closed[#closed + 1] = { name = name, index = index, cursor = cursor }
+    if #closed > 20 then
+      table.remove(closed, 1)
+    end
   end
   scan = true
   update()
+  return ok, err
+end
+
+-- Restore file buffers from disk, without retaining their text in memory.
+-- Only successful closes enter history; a failed switch leaves history intact.
+function M.restore()
+  if not M.enabled or #closed == 0 then
+    return false
+  end
+  local item = closed[#closed]
+  local ok, err = pcall(function()
+    local buf = vim.fn.bufadd(item.name)
+    api.nvim_set_current_buf(buf)
+    vim.bo[buf].buflisted = true
+    scan = true
+    update()
+    local index = vim.fn.index(order, buf) + 1
+    if index > 0 and not pinned[buf] then
+      table.remove(order, index)
+      local first = 1
+      while pinned[order[first]] do
+        first = first + 1
+      end
+      table.insert(order, math.max(first, math.min(item.index, #order + 1)), buf)
+    end
+    api.nvim_win_set_cursor(0, { math.min(item.cursor[1], api.nvim_buf_line_count(buf)), item.cursor[2] })
+    update()
+  end)
+  if ok then
+    table.remove(closed)
+  end
   return ok, err
 end
 
@@ -458,6 +505,7 @@ function M.disable()
   end
   previous, shown, output = nil, nil, ""
   order, entries, pinned, diagnostics = {}, {}, {}, {}
+  closed = {}
 end
 
 return M

@@ -65,6 +65,24 @@ t.eq(1, #line.items())
 line.close(b)
 line.refresh()
 assert(#line.items() >= 1, "Closing the last buffer supplies an editing buffer")
+local path = vim.fn.tempname() .. ".txt"
+vim.fn.writefile({ "saved one", "saved two" }, path)
+vim.cmd.edit(path)
+api.nvim_win_set_cursor(0, { 2, 3 })
+line.refresh()
+assert(line.close())
+local protected = api.nvim_get_current_buf()
+vim.bo[protected].modified = true
+vim.o.hidden = false
+assert(not line.restore())
+t.eq(protected, api.nvim_get_current_buf())
+vim.bo[protected].modified = false
+assert(line.restore())
+t.eq(vim.uv.fs_realpath(path), api.nvim_buf_get_name(0))
+t.eq({ "saved one", "saved two" }, api.nvim_buf_get_lines(0, 0, -1, false))
+t.eq({ 2, 3 }, api.nvim_win_get_cursor(0))
+vim.fn.delete(path)
+vim.o.hidden = true
 
 -- Render is a prebuilt string: no buffer scans, diagnostics, stat calls or processes.
 local originals = { api.nvim_list_bufs, vim.diagnostic.count, vim.fn.system, vim.fn.systemlist }

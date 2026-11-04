@@ -455,6 +455,11 @@ function M.refresh()
   end
 end
 
+-- Re-evaluate custom components without invalidating provider snapshots.
+function M.update()
+  request()
+end
+
 local function normalize(layout)
   for _, section in ipairs(sections) do
     local items = {}

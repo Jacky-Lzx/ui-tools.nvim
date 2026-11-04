@@ -1,6 +1,7 @@
 local M = {}
 local modules = {
   "dashboard",
+  "fold",
   "bufferline",
   "statusline",
   "winbar",

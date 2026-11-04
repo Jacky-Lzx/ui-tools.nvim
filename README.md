@@ -9,6 +9,7 @@ require("ui_tools").setup({
   bufferline = true,
   statusline = true,
   winbar = true,
+  fold = true,
   indent = { only_scope = true, chunk = true },
   statuscolumn = true,
   guide = { columns = { 121 } },
@@ -306,6 +307,46 @@ An inherited split adopts its own bar; custom owners, including later deliberate
 clears, are respected. Disable restores only still-owned window-local options.
 Visibility changes preserve editing cursors/views, and transient autocmd/float
 windows defer updates until the editing context returns.
+
+## Folding and previews
+
+`fold = true` manages native folds in normal, non-diff editing windows. With a
+Tree-sitter parser and folds query it uses `vim.treesitter.foldexpr()`; otherwise
+it falls back to indent folding. Parsers and queries remain externally managed.
+
+```lua
+require("ui_tools").setup({
+  fold = {
+    method = "auto", -- or "indent"
+    level = "open", -- initialize at the real maximum depth, or a numeric level
+    text = true, -- retain syntax colors and append the hidden-line count
+    suffix = "  … %d", -- use "  󰁂 %d" for the personal icon style
+    fillchars = { fold = " ", foldopen = "▾", foldsep = "│", foldclose = "▸" },
+    exclude = {}, -- filetypes; vim.b.ui_tools_disable also applies
+    force = false, -- preserve an existing custom foldtext/foldexpr provider
+    preview = { border = "rounded", max_width = 100, max_height = 20, max_lines = 200 },
+  },
+})
+vim.keymap.set("n", "zK", function() require("ui_tools.fold").preview() end)
+```
+
+The module installs no mappings. Native `zM`, `zR`, `zm`, `zr`, `za`, `zo`, `zc`,
+`zx` and `zX` continue to work. With `level = "open"`, the first `zm` immediately
+closes a level; revisiting a window does not reset the user's fold state. New
+splits initialize independently. The statuscolumn module continues to own the
+gutter; this module does not change `foldcolumn` or global fold defaults.
+
+Fold text uses display-cell widths for tabs and wide characters, keeps bounded
+Tree-sitter/syntax highlights and counts hidden lines excluding the header.
+Previewing a closed fold keeps editing focus; invoking it again focuses the
+preview. Escape closes it. Cursor movement, entering Insert mode or hiding the
+source closes the preview through Neovim's native floating-preview lifecycle.
+Large previews are limited by `max_lines`, with truncation shown in the title.
+
+Initialization preserves the cursor/view and Insert-mode byte column. Disable
+cancels pending initialization, closes owned previews and restores still-owned
+options in displayed windows. Later custom owners are respected. Use
+`require("ui_tools").toggle("fold")` to toggle the module.
 
 ## Indentation and current block
 

@@ -113,9 +113,34 @@ vim.keymap.set("n", "<A-u>", function() buffers.restore() end)
 ```
 
 Left click switches buffers; middle click or the close button closes one. Enable
-native mouse input with `vim.opt.mouse = "a"` to use these. No mappings or
-barbar-compatible commands are installed automatically. Switching obeys native
-modified-buffer protection. `close()` returns `false, reason` for modified or
+native mouse input with `vim.opt.mouse = "a"` to use these. No mappings are
+installed automatically. Enabling the module registers these commands; existing
+commands with the same name are preserved:
+
+| Command | Action |
+| --- | --- |
+| `:BufferNext [count]`, `:BufferPrevious [count]` | Cycle through buffers (default: 1 step). |
+| `:BufferFirst`, `:BufferLast`, `:BufferGoto {index}` | Jump to a position in the bar (indices start at 1). |
+| `:BufferMoveNext [count]`, `:BufferMovePrevious [count]` | Move within the current pinned/unpinned group. |
+| `:BufferPin` | Toggle the current buffer's pin. |
+| `:BufferClose[!]` | Close the current buffer. |
+| `:BufferRestore` | Restore the last closed named buffer from disk. |
+| `:BufferCloseAllButCurrent[!]` | Close all other buffers. |
+| `:BufferCloseBuffersLeft[!]`, `:BufferCloseBuffersRight[!]` | Close buffers on that side of the current position. |
+| `:BufferCloseAllButPinned[!]` | Close unpinned buffers. |
+| `:BufferCloseAllButVisible[!]` | Close buffers not displayed in any window, across tabpages. |
+| `:BufferCloseAll[!]` | Close every buffer in the bar. |
+
+Batch commands snapshot their targets in bar order, skip protected buffers, and
+report any failures while continuing to close other targets. `!` overrides pin
+and unsaved-change protection for selected targets; it does not override
+`winfixbuf`. Excluded and special buffers are never batch targets. The Lua API
+`buffers.close_many(scope, force)` accepts `"all"`, `"others"`, `"left"`, `"right"`,
+`"unpinned"`, or `"hidden"`, and returns `ok, reason`. Disabling the module removes
+only its own commands.
+
+Switching obeys native modified-buffer protection. `close()` returns
+`false, reason` for modified or
 pinned buffers; `close(buf, true)` explicitly overrides both protections. Closing
 preserves splits, respects `winfixbuf`, and supplies an empty editing buffer when
 the last buffer closes. Pinned buffers stay together at the start; movement is

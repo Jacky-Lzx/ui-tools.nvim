@@ -377,6 +377,63 @@ function M.close(buf, force)
   return ok, err
 end
 
+-- Select once so closing a buffer cannot change the meaning of left/right or visible.
+function M.close_many(scope, force)
+  if not M.enabled then
+    return false, "Bufferline is disabled"
+  end
+  local items, current, visible = M.items(), api.nvim_get_current_buf(), {}
+  local position
+  for i, item in ipairs(items) do
+    if item.buf == current then
+      position = i
+    end
+  end
+  for _, win in ipairs(api.nvim_list_wins()) do
+    visible[api.nvim_win_get_buf(win)] = true
+  end
+  if (scope == "left" or scope == "right") and not position then
+    return false, "Current buffer is not in the buffer bar"
+  end
+  local select = {
+    all = function()
+      return true
+    end,
+    others = function(item)
+      return item.buf ~= current
+    end,
+    left = function(_, i)
+      return i < position
+    end,
+    right = function(_, i)
+      return i > position
+    end,
+    unpinned = function(item)
+      return not item.pinned
+    end,
+    hidden = function(item)
+      return not visible[item.buf]
+    end,
+  }
+  assert(select[scope], "Unknown buffer close scope: " .. tostring(scope))
+  local targets, failures = {}, {}
+  for i, item in ipairs(items) do
+    if select[scope](item, i) then
+      targets[#targets + 1] = item
+    end
+  end
+  for _, item in ipairs(targets) do
+    -- Autocommands from an earlier close may have already removed a target.
+    if eligible(item.buf) then
+      local ok, err = M.close(item.buf, force)
+      if not ok then
+        failures[#failures + 1] = item.name .. ": " .. (err or "Could not close buffer")
+      end
+    end
+  end
+  return #failures == 0, #failures > 0 and table.concat(failures, "\n") or nil
+end
+
 -- Restore file buffers from disk, without retaining their text in memory.
 -- Only successful closes enter history; a failed switch leaves history intact.
 function M.restore()
@@ -502,11 +559,13 @@ function M.setup(opts)
       end,
     })
   end
+  require("ui_tools.bufferline_commands").setup(M)
   M.refresh()
   return true
 end
 
 function M.disable()
+  require("ui_tools.bufferline_commands").disable()
   require("ui_tools.theme").unbind("bufferline")
   M.enabled = false
   if queue then

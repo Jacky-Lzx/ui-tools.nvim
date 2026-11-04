@@ -34,8 +34,8 @@ try:
       end
       vim.api.nvim_set_current_buf(buffers[1])
       require('ui_tools').setup({bufferline={numbers=true,auto_hide=-1}})
-      vim.keymap.set('n',']b',function() line.cycle(1) end)
-      vim.keymap.set('n','[b',function() line.cycle(-1) end)
+      vim.keymap.set('n',']b','<Cmd>BufferNext<CR>')
+      vim.keymap.set('n','[b','<Cmd>BufferPrevious<CR>')
     """)
     text = screen()
     assert all(name in text for name in ("first.lua", "中文%evil.lua", "last.lua")), text
@@ -69,6 +69,18 @@ try:
     ui.request("nvim_input_mouse", ["left", "press", "", 0, 0, col])
     ui.request("nvim_input_mouse", ["left", "release", "", 0, 0, col])
     assert lua("return not vim.api.nvim_buf_is_valid(buffers[3])")
+
+    # Enter Ex commands through real UI input; closing others preserves splits.
+    keys(":BufferFirst<CR>:vsplit<CR>:BufferLast<CR>")
+    assert lua("return vim.api.nvim_get_current_buf()==buffers[2] and #vim.api.nvim_list_wins()==2")
+    keys(":BufferCloseAllButCurrent<CR>")
+    assert lua("return not vim.api.nvim_buf_is_valid(buffers[1]) and vim.api.nvim_get_current_buf()==buffers[2] and #vim.api.nvim_list_wins()==2")
+    assert "first.lua" not in screen() and "中文%evil.lua" in screen()
+    keys(":BufferRestore<CR>")
+    assert lua("return vim.api.nvim_buf_get_name(0):match('/first.lua$')~=nil")
+    assert "first.lua" in screen()
+    keys(":BufferClose<CR>:only<CR>")
+    assert lua("return vim.api.nvim_get_current_buf()==buffers[2] and #vim.api.nvim_list_wins()==1")
 
     lua("""
       for i=1,60 do
@@ -113,6 +125,6 @@ try:
     assert lua("return vim.deep_equal(saved_cursor,vim.api.nvim_win_get_cursor(0)) and saved_view.topline==vim.fn.winsaveview().topline")
     lua("require('ui_tools').disable()")
     assert lua("return vim.o.tabline == ''")
-    print("bufferline native UI mouse, keys, 500-character burst, overflow and resize passed")
+    print("bufferline native UI commands, mouse, keys, 500-character burst, overflow and resize passed")
 finally:
     ui.close()

@@ -187,12 +187,19 @@ local function update()
   end
   result[#result + 1] = "%#UiToolsBufferFill#%=" .. string.rep(" ", right)
   local next_output = table.concat(result)
+  local changed = output ~= next_output
+  output = next_output
   if vim.o.showtabline == shown then
-    shown = #order <= M.options.auto_hide and 0 or 2
-    vim.o.showtabline = shown
+    local next_shown = #order <= M.options.auto_hide and 0 or 2
+    if next_shown ~= shown then
+      shown = next_shown
+      bar.preserve_views(function()
+        vim.o.showtabline = shown
+      end)
+      changed = false -- The geometry redraw already used the new string.
+    end
   end
-  if output ~= next_output then
-    output = next_output
+  if changed then
     vim.cmd("redrawtabline")
   end
 end

@@ -97,6 +97,20 @@ try:
     assert text[21:].strip(), text
     lua("vim.cmd('wincmd h'); vim.cmd('close')")
     assert not screen().startswith(" " * 21)
+    lua("""
+      vim.cmd('only'); vim.o.splitkeep='screen'
+      for _, b in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.bo[b].buflisted then vim.bo[b].modified=false; vim.api.nvim_buf_delete(b,{force=false}) end
+      end
+      vim.cmd('enew'); vim.bo.buflisted=true
+      local lines={}; for i=1,200 do lines[i]='line '..i end
+      vim.api.nvim_buf_set_lines(0,0,-1,false,lines)
+      vim.api.nvim_win_set_cursor(0,{30,2}); vim.cmd('normal! zz')
+      line.setup({auto_hide=1}); saved_cursor=vim.api.nvim_win_get_cursor(0)
+      saved_view=vim.fn.winsaveview(); vim.api.nvim_create_buf(true,false)
+    """)
+    screen()
+    assert lua("return vim.deep_equal(saved_cursor,vim.api.nvim_win_get_cursor(0)) and saved_view.topline==vim.fn.winsaveview().topline")
     lua("require('ui_tools').disable()")
     assert lua("return vim.o.tabline == ''")
     print("bufferline native UI mouse, keys, 500-character burst, overflow and resize passed")

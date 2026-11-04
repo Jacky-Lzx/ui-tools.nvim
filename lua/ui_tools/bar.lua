@@ -41,6 +41,28 @@ function M.truncate(value, width)
   return vim.fn.strcharpart(value, 0, low) .. "…"
 end
 
+-- Tabline/winbar visibility changes resize text windows. With splitkeep=screen
+-- Neovim may move the logical cursor to preserve its screen row. Settle that
+-- geometry synchronously, then restore the original document positions/views.
+function M.preserve_views(callback)
+  local views = {}
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_config(win).relative == "" then
+      views[win] =
+        { buf = vim.api.nvim_win_get_buf(win), view = vim.api.nvim_win_call(win, vim.fn.winsaveview) }
+    end
+  end
+  callback()
+  vim.cmd("redraw!")
+  for win, item in pairs(views) do
+    if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == item.buf then
+      vim.api.nvim_win_call(win, function()
+        vim.fn.winrestview(item.view)
+      end)
+    end
+  end
+end
+
 -- One deferred callback per burst, with no repeating timer or idle work.
 -- Cancelling also invalidates callbacks from a previous setup generation.
 function M.scheduler(delay, callback)

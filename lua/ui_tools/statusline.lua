@@ -144,7 +144,11 @@ local function synchronize()
   if next(windows) and not previous_laststatus then
     previous_laststatus = vim.o.laststatus
     applied_laststatus = M.options.globalstatus and 3 or 2
-    vim.o.laststatus = applied_laststatus
+    if vim.o.laststatus ~= applied_laststatus then
+      bar.preserve_views(function()
+        vim.o.laststatus = applied_laststatus
+      end)
+    end
   end
 end
 

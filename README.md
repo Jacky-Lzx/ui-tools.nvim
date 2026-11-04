@@ -17,6 +17,7 @@ require("ui_tools").setup({
   focus = { width = 100, height = 0.9, dim = true },
   scrollbar = true,
   context_menu = true,
+  colors = true,
 })
 ```
 
@@ -26,6 +27,45 @@ Zoom, scope dimming, current-line pulse and optional GitTools markers.
 Disable competing renderers (for example Snacks indent) when enabling a module.
 No colorscheme or icon font is required. Override `UiTools*` highlight groups
 through your colorscheme; plugin defaults use standard highlight links.
+
+## Color previews
+
+`colors = true` shows an inline `■` before each color literal, without changing
+source text. Disable nvim-highlight-colors/colorizer before enabling this module.
+
+```lua
+require("ui_tools").setup({
+  colors = {
+    style = "inline", -- "inline", "eol", "foreground", "background"
+    symbol = "■", -- one display cell; no icon font needed
+    names = true, -- CSS names, case insensitive; false limits previews to literals/custom names
+    custom = { brand = "#89b4fa", accent = "hsl(270 80% 65%)" },
+    refresh = 30, -- milliseconds; edit bursts are coalesced without waiting for InsertLeave
+    max_line_length = 4096, -- bytes; longer lines are skipped
+    priority = 150,
+    exclude = { "help", "checkhealth", "lazy", "NvimTree" },
+    max_lines = 100000,
+    max_bytes = 10 * 1024 * 1024,
+  },
+})
+require("ui_tools").toggle("colors")
+require("ui_tools.colors").refresh() -- after changing buffer-local exclusions/highlights manually
+```
+
+Supports `#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`, `0xRRGGBB`, RGB/RGBA,
+HSL/HSLA (commas or CSS space/slash notation), percentages, hue units, all CSS
+named colors, and `transparent`. Eight-digit hex uses trailing alpha, including
+`0x` values. Names are matched as whole tokens in all filetypes; set `names = false`
+if ordinary words such as `red` are distracting. CSS variable references,
+Tailwind classes, computed expressions and LSP document colors are not resolved.
+Alpha is composited over `Normal` (black/white according to `background` when
+the theme has a transparent background), and refreshes on theme changes.
+Background style uses contrasting black/white text.
+
+Only visible, unfolded rows across windows are scanned; hidden buffers lose
+their marks. Decorations belong to the buffer and are shared by its windows.
+Special buffers, diff windows, unrelated floats, large files and
+`vim.b.ui_tools_disable = true` are excluded from scanning. No mappings are installed.
 
 ## Dashboard
 

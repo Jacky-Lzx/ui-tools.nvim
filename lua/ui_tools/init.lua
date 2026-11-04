@@ -12,6 +12,7 @@ local modules = {
   "feedback",
   "focus",
   "scrollbar",
+  "colors",
 }
 
 local function highlights(c)

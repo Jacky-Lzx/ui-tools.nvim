@@ -13,6 +13,7 @@ local modules = {
   "focus",
   "scrollbar",
   "colors",
+  "todo",
 }
 
 local function highlights(c)

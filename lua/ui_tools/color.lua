@@ -35,7 +35,7 @@ function M.parse(value, custom)
   value = names[value] or value
   local digits = value:match("^#(%x+)$") or value:match("^0x(%x+)$")
   if digits then
-    if #digits == 3 or #digits == 4 then
+    if value:sub(1, 1) == "#" and (#digits == 3 or #digits == 4) then
       digits = digits:gsub(".", "%0%0")
     end
     if #digits == 6 or #digits == 8 then
@@ -71,6 +71,9 @@ function M.parse(value, custom)
     end
     if alpha then
       parts[#parts + 1] = vim.trim(alpha)
+    end
+    if #parts == 4 and not alpha then
+      return
     end
   end
   if #parts ~= 3 and #parts ~= 4 then

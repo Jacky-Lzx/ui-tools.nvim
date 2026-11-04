@@ -74,10 +74,8 @@ function M.new(name)
         end
       end
     end
-    -- The statuscolumn caches native signs, so refresh it after publishing ours.
-    local column = package.loaded["ui_tools.statuscolumn"]
-    if column and column.enabled then
-      column.refresh()
+    if self.on_refresh then
+      self.on_refresh()
     end
     util.redraw()
   end
@@ -93,6 +91,9 @@ function M.new(name)
     end
     self.marked = {}
     self.visible = {}
+    if self.on_refresh then
+      self.on_refresh()
+    end
     util.redraw()
   end
 

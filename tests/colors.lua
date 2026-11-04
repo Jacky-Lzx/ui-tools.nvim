@@ -30,6 +30,8 @@ for _, invalid in ipairs({
   "hsl(0 1 1)",
   "hsl(2foo 50% 50%)",
   "none",
+  "0xabc",
+  "rgb(1 2 3 .5)",
 }) do
   t.eq(nil, color.parse(invalid))
 end

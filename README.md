@@ -18,6 +18,7 @@ require("ui_tools").setup({
   scrollbar = true,
   context_menu = true,
   colors = true,
+  todo = true,
 })
 ```
 
@@ -66,6 +67,58 @@ Only visible, unfolded rows across windows are scanned; hidden buffers lose
 their marks. Decorations belong to the buffer and are shared by its windows.
 Special buffers, diff windows, unrelated floats, large files and
 `vim.b.ui_tools_disable = true` are excluded from scanning. No mappings are installed.
+
+## TODO annotations
+
+`todo = true` adds colored keyword badges, comment text and native signs. Disable
+todo-comments.nvim's visual renderer before enabling it; project search/pickers
+remain the responsibility of selection-tools or your other search integration.
+
+```lua
+require("ui_tools").setup({
+  todo = {
+    style = "badge", -- or "foreground"
+    after = true, -- color the description up to the next tag/comment boundary
+    signs = true,
+    sign_priority = 8, -- diagnostics normally take precedence
+    comments_only = true,
+    prose = { "markdown", "text", "gitcommit" }, -- allow tags outside comments in these filetypes
+    keywords = {
+      -- Entries merge with defaults; false disables a category and its aliases.
+      TODO = { icon = "✓", hl = "DiagnosticInfo", rank = 50 },
+      SECURITY = { icon = "!", hl = "DiagnosticError", rank = 100, alt = { "SEC" } },
+      -- NOTE = false,
+    },
+    refresh = 30,
+    max_line_length = 4096,
+    priority = 160,
+    -- exclude, max_lines and max_bytes use the same defaults as colors.
+  },
+})
+require("ui_tools").toggle("todo")
+require("ui_tools.todo").refresh()
+```
+
+Default categories are FIX (FIXME, BUG, FIXIT, ISSUE), TODO, HACK, WARN (WARNING,
+XXX), PERF (OPTIM, PERFORMANCE, OPTIMIZE), NOTE (INFO), and TEST (TESTING, PASSED,
+FAILED). Tags are uppercase whole words followed by a colon; `TODO(owner):` is
+also supported. All tags on a line get their own badge. The highest `rank` wins
+the single sign on that line (FIX 90, WARN 80, HACK 70, TODO 50, PERF 40, TEST 30,
+NOTE 20); equal ranks keep the first tag. Signs are single-cell text symbols and
+work with both Neovim's native sign column and ui-tools' `sign` slot.
+
+Code comments are identified by the active Tree-sitter highlighter, including
+injected languages, or Vim syntax when no Tree-sitter highlighter is active.
+Without either source of syntax information, code tags are left unmarked. Set
+`comments_only = false` to recognize tags anywhere. Prose filetypes allow tags
+throughout the document, including fenced code. This module does not start a
+parser, enable syntax highlighting, install mappings, or search the project.
+
+Foreground groups `UiToolsTodoFIX`, `UiToolsTodoTODO`, etc. link to the configured
+`hl`. Badge groups `UiToolsTodoBadgeFIX`, etc. derive a background from that
+highlight and choose contrasting text; both refresh with the theme. Set an
+entry's `badge_hl` to your own highlight group to control the badge completely.
+Viewport bounds, fold handling, buffer exclusions and cleanup match `colors`.
 
 ## Dashboard
 
@@ -708,9 +761,14 @@ Focus mode displays only the focused window's bar.
 ## Development
 
 Run `sh tests/run.sh` (Neovim, Python 3 and StyLua required). Tests include an
-attached Neovim UI and inspect its actual redraw grid.
+attached Neovim UI and inspect its actual redraw grid. Annotation tests also drive
+a real terminal with a PTY and check RGB output and continuous insert-mode edits.
 Use `NVIM_BIN=/path/to/nvim sh tests/run.sh` to test another Neovim release.
-The full behavior and UI suites have been run locally on Neovim 0.11.5 and 0.12.6.
+For an optional full-configuration annotation check, run
+`UI_TOOLS_CONFIG=/path/to/nvim/init.lua python3 tests/annotations_pty.py`.
+It enables the modules and disables the old color/TODO renderers only inside
+the test process; it does not edit the configuration. Tree-sitter tests use an
+available Lua parser; set `UI_TOOLS_PARSER_DIR` to its runtime directory if needed.
 
 When theme-tools.nvim is active, UI highlights, statusline mode colors and buffer
 colors follow its shared semantic palette. This integration is optional and does

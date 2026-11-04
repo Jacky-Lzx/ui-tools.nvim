@@ -3,6 +3,7 @@
 -- Disable barbar/other tabline plugins before enabling bufferline.
 -- Disable lualine/other statusline plugins before enabling statusline.
 -- Disable nvim-highlight-colors/colorizer before enabling colors.
+-- Disable todo-comments.nvim's renderer before enabling todo.
 return {
   dir = vim.fn.expand("~/Documents/Github/nvim_plugins/ui-tools.nvim"),
   name = "ui-tools.nvim",
@@ -23,6 +24,7 @@ return {
     scrollbar = true,
     context_menu = true,
     colors = true,
+    todo = true,
   },
   config = function(_, opts)
     require("ui_tools").setup(opts)

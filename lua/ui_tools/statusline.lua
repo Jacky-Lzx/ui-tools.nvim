@@ -117,7 +117,10 @@ local function eligible(win)
     return false
   end
   local buf = api.nvim_win_get_buf(win)
-  return vim.b[buf].ui_tools_disable ~= true and not vim.tbl_contains(M.options.exclude, vim.bo[buf].filetype)
+  local profile = bar.profile(buf, "statusline", M.options)
+  return vim.b[buf].ui_tools_disable ~= true
+    and profile ~= false
+    and (profile ~= nil or not vim.tbl_contains(M.options.exclude, vim.bo[buf].filetype))
 end
 
 local function local_option(win)
@@ -286,7 +289,7 @@ local function context(win, active)
     lines = api.nvim_buf_line_count(buf),
     width = M.options.globalstatus and vim.o.columns or api.nvim_win_get_width(win),
     cwd = bar.text(vim.fn.fnamemodify(vim.fn.getcwd(win, tabnr), ":~")),
-    filetype = cache[buf].filetype,
+    filetype = vim.bo[buf].filetype,
   }
 end
 
@@ -354,14 +357,29 @@ local function update()
   M.errors = {}
   for win in pairs(windows) do
     local buf = api.nvim_win_get_buf(win)
-    if not used[buf] then
-      snapshot(buf, all_dirty and { all = true } or dirty[buf] or {})
-      used[buf] = true
+    local profile = bar.profile(buf, "statusline", M.options)
+    if profile ~= nil then
+      local frame = { special = true }
+      for _, state in ipairs({ "active", "inactive" }) do
+        local ok, result = pcall(api.nvim_win_call, win, function()
+          return bar.profile_text(profile, context(win, state == "active"))
+        end)
+        if not ok then
+          M.errors[win .. ":" .. state] = tostring(result)
+        end
+        frame[state] = ok and result or { text = "", align = "left" }
+      end
+      frames[win] = frame
+    else
+      if not used[buf] then
+        snapshot(buf, all_dirty and { all = true } or dirty[buf] or {})
+        used[buf] = true
+      end
+      frames[win] = {
+        active = compile(M.options.sections, cache[buf], context(win, true)),
+        inactive = compile(M.options.inactive_sections, cache[buf], context(win, false)),
+      }
     end
-    frames[win] = {
-      active = compile(M.options.sections, cache[buf], context(win, true)),
-      inactive = compile(M.options.inactive_sections, cache[buf], context(win, false)),
-    }
   end
   -- Keep only displayed buffers; thousands of hidden buffers cost nothing here.
   for buf in pairs(cache) do
@@ -441,6 +459,9 @@ function M.render()
   local active = win == api.nvim_get_current_win()
   local layout = active and frame.active or frame.inactive
   local width = M.options.globalstatus and vim.o.columns or api.nvim_win_get_width(win)
+  if frame.special then
+    return bar.render_profile(layout, width, active and "UiToolsStatus" or "UiToolsStatusInactive")
+  end
   local label, color = mode()
   local buf = api.nvim_win_get_buf(win)
   local ctx = { mode = label, cursor = api.nvim_win_get_cursor(win), lines = api.nvim_buf_line_count(buf) }
@@ -558,6 +579,7 @@ function M.setup(opts)
   local config = vim.tbl_deep_extend("force", {
     refresh = 30,
     globalstatus = false,
+    filetypes = {},
     force = false,
     exclude = { "ui_tools_dashboard" },
     component_separator = "",
@@ -575,7 +597,7 @@ function M.setup(opts)
     bar.text(config.component_separator), bar.text(config.section_separator)
   config.component_width, config.section_width =
     bar.width(config.component_separator), bar.width(config.section_separator)
-  custom = false
+  custom = bar.validate_profiles(config.filetypes)
   normalize(config.sections)
   normalize(config.inactive_sections)
   M.options, M.enabled, all_dirty = config, true, true

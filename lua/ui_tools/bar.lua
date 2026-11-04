@@ -41,6 +41,67 @@ function M.truncate(value, width)
   return vim.fn.strcharpart(value, 0, low) .. "…"
 end
 
+-- Explicit buffer declarations take precedence over filetype defaults.
+function M.profile(buf, kind, opts)
+  local spec = vim.b[buf]["ui_tools_" .. kind]
+  if spec == nil then
+    spec = opts.filetypes[vim.bo[buf].filetype]
+  end
+  return spec
+end
+
+local function validate_profile(spec)
+  if spec == false or type(spec) == "string" then
+    return
+  end
+  assert(type(spec) == "table", "bar profile must be text, a table or false")
+  assert(
+    type(spec.text) == "string" or type(spec.text) == "function",
+    "bar profile.text must be text or a function"
+  )
+  assert(
+    spec.align == nil or vim.tbl_contains({ "left", "center", "right" }, spec.align),
+    "bar profile.align must be left, center or right"
+  )
+end
+
+function M.validate_profiles(profiles)
+  assert(type(profiles) == "table", "bar filetypes must be a table")
+  local custom = false
+  for ft, spec in pairs(profiles) do
+    assert(type(ft) == "string", "bar filetypes keys must be filetypes")
+    validate_profile(spec)
+    custom = custom or type(spec) == "table" and type(spec.text) == "function"
+  end
+  return custom
+end
+
+-- Called during updates, never redraw. Callers isolate malformed buffer data
+-- and callback failures, and execute providers in the target window's context.
+function M.profile_text(spec, ctx)
+  validate_profile(spec)
+  if type(spec) == "string" then
+    return { text = M.text(spec), align = "left" }
+  end
+  local text = spec.text
+  if type(text) == "function" then
+    text = text(ctx)
+  end
+  return { text = M.text(text), align = spec.align or "left" }
+end
+
+function M.render_profile(data, width, hl)
+  local text = M.escape(M.truncate(data.text, math.max(0, width - 2)))
+  local prefix = "%#" .. M.highlight(hl) .. "#"
+  if data.align == "center" then
+    return prefix .. "%= " .. text .. " %="
+  end
+  if data.align == "right" then
+    return prefix .. "%=" .. text .. " "
+  end
+  return prefix .. " " .. text .. "%="
+end
+
 -- Tabline/winbar visibility changes resize text windows. With splitkeep=screen
 -- Neovim may move the logical cursor to preserve its screen row. Settle that
 -- geometry synchronously, then restore the original document positions/views.

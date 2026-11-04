@@ -4,6 +4,7 @@ local bar = require("ui_tools.bar")
 local expression = "%!v:lua.require'ui_tools.winbar'.render()"
 local owned, blocked, buffers, cache, client_dirty = {}, {}, {}, {}, {}
 local queue
+local profiles = {}
 
 local function highlights(colors)
   local normal = api.nvim_get_hl(0, { name = "Normal", link = false })
@@ -31,13 +32,17 @@ local function release(win)
   if owned[win] ~= nil and api.nvim_win_is_valid(win) and local_option(win) == expression then
     set_option(win, owned[win])
   end
-  owned[win], buffers[win], M.errors[win] = nil, nil, nil
+  owned[win], buffers[win], profiles[win], M.errors[win] = nil, nil, nil, nil
 end
 
 local function eligible(win, buf)
+  local profile = bar.profile(buf, "winbar", M.options)
   return api.nvim_win_get_config(win).relative == ""
-    and vim.bo[buf].buftype == ""
-    and not vim.tbl_contains(M.options.exclude, vim.bo[buf].filetype)
+    and profile ~= false
+    and (profile ~= nil or vim.bo[buf].buftype == "" and not vim.tbl_contains(
+      M.options.exclude,
+      vim.bo[buf].filetype
+    ))
     and vim.b[buf].ui_tools_disable ~= true
 end
 
@@ -68,24 +73,43 @@ local function update()
         or M.options.force
       )
     then
-      local data = cache[buf]
-      if not data or client_dirty[buf] then
-        local clients, seen = {}, {}
-        if M.options.lsp then
-          for _, client in ipairs(vim.lsp.get_clients({ bufnr = buf })) do
-            if not seen[client.name] then
-              clients[#clients + 1], seen[client.name] = client.name, true
+      local profile = bar.profile(buf, "winbar", M.options)
+      profiles[win] = nil
+      if profile ~= nil then
+        local active = win == api.nvim_get_current_win()
+        local ok, result = pcall(api.nvim_win_call, win, function()
+          return bar.profile_text(profile, {
+            win = win,
+            buf = buf,
+            width = api.nvim_win_get_width(win),
+            cursor = api.nvim_win_get_cursor(win),
+            active = active,
+            filetype = vim.bo[buf].filetype,
+          })
+        end)
+        M.errors[win] = not ok and tostring(result) or nil
+        profiles[win] = ok and result or { text = "", align = "left" }
+      else
+        M.errors[win] = nil
+        local data = cache[buf]
+        if not data or client_dirty[buf] then
+          local clients, seen = {}, {}
+          if M.options.lsp then
+            for _, client in ipairs(vim.lsp.get_clients({ bufnr = buf })) do
+              if not seen[client.name] then
+                clients[#clients + 1], seen[client.name] = client.name, true
+              end
             end
+            table.sort(clients)
           end
-          table.sort(clients)
+          data = { clients = bar.escape(table.concat(clients, ", ")) }
+          cache[buf] = data
+          client_dirty[buf] = nil
         end
-        data = { clients = bar.escape(table.concat(clients, ", ")) }
-        cache[buf] = data
-        client_dirty[buf] = nil
+        local name = vim.fn.fnamemodify(api.nvim_buf_get_name(buf), ":t")
+        data.name = bar.text(name == "" and "[No Name]" or name)
+        used[buf] = true
       end
-      local name = vim.fn.fnamemodify(api.nvim_buf_get_name(buf), ":t")
-      data.name = bar.text(name == "" and "[No Name]" or name)
-      used[buf] = true
       if owned[win] == nil then
         local value = local_option(win)
         owned[win] = value == expression and "" or value
@@ -124,6 +148,13 @@ function M.render()
     return " "
   end
   local buf = api.nvim_win_get_buf(win)
+  if profiles[win] and buffers[win] == buf then
+    return bar.render_profile(
+      profiles[win],
+      api.nvim_win_get_width(win),
+      win == api.nvim_get_current_win() and "WinBar" or "WinBarNC"
+    )
+  end
   local data = cache[buf]
   if not data or buffers[win] ~= buf then
     return " "
@@ -169,6 +200,7 @@ function M.setup(opts)
     force = false,
     filename = true,
     filename_width = 0.45,
+    filetypes = {},
     lsp = true,
     exclude = { "ui_tools_dashboard" },
   }, opts or {})
@@ -186,6 +218,7 @@ function M.setup(opts)
     M.options.breadcrumbs == nil or type(M.options.breadcrumbs) == "function",
     "winbar.breadcrumbs must be a function"
   )
+  local custom = bar.validate_profiles(M.options.filetypes)
   M.enabled = true
   queue = bar.scheduler(M.options.refresh, update)
   require("ui_tools.theme").bind("winbar", highlights)
@@ -215,6 +248,14 @@ function M.setup(opts)
       queue.request()
     end,
   })
+  if custom then
+    api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "TextChanged", "TextChangedI" }, {
+      group = group,
+      callback = function()
+        queue.request()
+      end,
+    })
+  end
   update()
 end
 
@@ -229,7 +270,7 @@ function M.disable()
   for win in pairs(owned) do
     release(win)
   end
-  owned, blocked, buffers, cache, client_dirty, M.errors = {}, {}, {}, {}, {}, {}
+  owned, blocked, buffers, cache, client_dirty, profiles, M.errors = {}, {}, {}, {}, {}, {}, {}
 end
 
 return M

@@ -401,6 +401,57 @@ clears, are respected. Disable restores only still-owned window-local options.
 Visibility changes preserve editing cursors/views, and transient autocmd/float
 windows defer updates until the editing context returns.
 
+## Special buffer bars
+
+Plugins can declare their own plain-text title and footer without depending on
+ui-tools. Set these buffer variables before displaying the buffer:
+
+```lua
+vim.b[buf].ui_tools_winbar = { text = "Files", align = "center" }
+vim.b[buf].ui_tools_statusline = "file-tools"
+```
+
+Both modules must be enabled in ui-tools. A string aligns left; a table accepts
+`text` and `align = "left" | "center" | "right"`. Text is escaped and truncated
+by display cells. These declarations replace the entire bar in both active and
+inactive windows, so a sidebar never inherits mode, file format or cursor data.
+An empty string keeps a blank bar; `false` opts out of ui-tools ownership and
+restores the previous option. Set the variable to `nil` to use filetype defaults.
+After changing variables on an already visible buffer, call
+`require("ui_tools.winbar").refresh()` and/or
+`require("ui_tools.statusline").refresh()`.
+
+The same profiles can be configured by filetype:
+
+```lua
+require("ui_tools").setup({
+  winbar = {
+    filetypes = { ["file-tools"] = { text = "Files", align = "center" } },
+  },
+  statusline = {
+    filetypes = {
+      ["file-tools"] = "file-tools",
+      panel = { text = function(ctx) return ctx.filetype end, align = "right" },
+    },
+  },
+})
+```
+
+Buffer variables take precedence over filetype profiles. An explicit profile
+opts special buffers into the bar, including `nofile` buffers and filetypes in
+`exclude`. Floating windows and `b:ui_tools_disable` still stay excluded, and
+existing/later custom bar owners remain respected. Profiles do not enable a
+disabled module or alter the `globalstatus` setting; use per-window statuslines
+(`globalstatus = false`, the default) for separate sidebar footers.
+
+Filetype `text` callbacks return plain text or `nil` to leave the bar blank.
+They run in the target window during coalesced updates, including cursor/edit
+events, never from the redraw expression. Both modules supply `win`, `buf`,
+`active`, `width`, `cursor` and `filetype`; statusline callbacks also receive the
+usual statusline context. Buffer variables hold serializable strings/tables;
+use filetype profiles for Lua callbacks. Callback or declaration errors blank
+only the affected bar and are recorded in the module's `errors` table.
+
 ## Folding and previews
 
 `fold = true` manages native folds in normal, non-diff editing windows. With a

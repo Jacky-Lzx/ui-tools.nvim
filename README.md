@@ -172,6 +172,9 @@ mappings are changed.
 When leaving the automatic startup dashboard, its original empty placeholder is
 removed only if it remains unchanged and no window uses it. Closing the dashboard
 back to that buffer keeps it; manually opened dashboards preserve their source.
+The dashboard leaves its window unlocked so file-opening tools can reuse it
+when no ordinary editor exists. Native buffer replacement runs the normal
+cleanup: restore bars/options and retire an unchanged startup placeholder.
 The dashboard disables cursorline while open. Colors use
 `UiToolsDashboardHeader`, `UiToolsDashboardDesc` (Function),
 `UiToolsDashboardIcon` (DiagnosticHint), `UiToolsDashboardKey` and

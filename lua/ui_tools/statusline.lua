@@ -57,7 +57,7 @@ local function highlights()
     local color = accent.fg or normal.fg
     api.nvim_set_hl(0, "UiToolsStatus" .. mode, {
       default = true,
-      fg = normal.bg,
+      fg = 0x000000,
       bg = color,
       bold = true,
       reverse = color == nil,

@@ -35,18 +35,27 @@ try:
       api.nvim_buf_set_name(0,'/tmp/ui-tools-status-ui/中文%file.lua')
       api.nvim_buf_set_lines(0,0,-1,false,{'first','second','third'})
       vim.bo.filetype='lua'; vim.bo.modified=false
+      -- Transparent Normal must not leave accent-block text inheriting white.
+      api.nvim_set_hl(0,'Normal',{fg=0xcdd6f4})
+      api.nvim_set_hl(0,'Function',{fg=0x88aaff})
+      api.nvim_set_hl(0,'String',{fg=0x88ff88})
       require('ui_tools').setup({bufferline={auto_hide=-1},statusline={globalstatus=true}})
-      api.nvim_set_hl(0,'UiToolsStatusNormal',{fg=0x000000,bg=0x88aaff,bold=true})
-      api.nvim_set_hl(0,'UiToolsStatusInsert',{fg=0x000000,bg=0x88ff88,bold=true})
       source=api.nvim_get_current_buf()
     """)
     assert "NORMAL" in status() and "中文%file.lua" in status(), screen()
     col = next(i for i, (c, _) in enumerate(ui.grid[-2]) if c == "N")
     assert ui.attrs[ui.grid[-2][col][1]].get("background") == 0x88AAFF
+    assert ui.attrs[ui.grid[-2][col][1]].get("foreground") == 0x000000
+    # Grid columns include continuation cells for the wide filename glyphs.
+    row = ui.grid[-2]
+    location = next(i for i in range(len(row) - 2) if [c for c, _ in row[i:i + 3]] == ["1", ":", "1"])
+    assert ui.attrs[ui.grid[-2][location][1]].get("background") == 0x88AAFF
+    assert ui.attrs[ui.grid[-2][location][1]].get("foreground") == 0x000000
     keys("i")
     assert "INSERT" in status(), screen()
     col = next(i for i, (c, _) in enumerate(ui.grid[-2]) if c == "I")
     assert ui.attrs[ui.grid[-2][col][1]].get("background") == 0x88FF88
+    assert ui.attrs[ui.grid[-2][col][1]].get("foreground") == 0x000000
 
     lua("""
       queries=0; old_count=vim.diagnostic.count; old_clients=vim.lsp.get_clients

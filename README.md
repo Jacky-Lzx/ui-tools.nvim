@@ -225,6 +225,7 @@ Colors use `UiToolsStatus`, `UiToolsStatusAlt`, `UiToolsStatusInactive`,
 `UiToolsStatusDiff`, `UiToolsStatusError/Warn/Info/Hint` and
 `UiToolsStatusNormal/Insert/Visual/Replace/Command/Terminal`. The final group names
 are alternatives, e.g. `UiToolsStatusInsert`. Override them in your colorscheme.
+Mode and location blocks use black text on their colorscheme-derived accent background.
 Inactive splits use `UiToolsStatusInactive` throughout. Existing custom local or
 global statuslines are preserved unless `force = true`. Disable restores local
 statuslines and `laststatus` only while their values are still owned; later

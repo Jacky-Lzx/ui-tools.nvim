@@ -321,6 +321,7 @@ local function value(kind, data, ctx, spec)
     for severity, label in ipairs({ "E", "W", "I", "H" }) do
       if (data.diagnostics[severity] or 0) > 0 then
         local symbol = symbols[severity] or symbols[names[severity]] or label
+        symbol = symbol ~= "" and symbol or label
         parts[#parts + 1] = {
           bar.text(symbol) .. data.diagnostics[severity],
           "UiToolsStatus" .. ({ "Error", "Warn", "Info", "Hint" })[severity],
@@ -873,7 +874,10 @@ function M.setup(opts)
     group = group,
     pattern = { "GitToolsUpdate", "GitSignsUpdate", "ThemeToolsIconsChanged", "ThemeToolsReady" },
     callback = function(args)
-      request((args.match == "GitToolsUpdate" or args.match == "GitSignsUpdate") and "git" or nil)
+      local kind = (args.match == "GitToolsUpdate" or args.match == "GitSignsUpdate") and "git"
+        or (args.match == "ThemeToolsIconsChanged" or args.match == "ThemeToolsReady") and "diagnostics"
+        or nil
+      request(kind)
     end,
   })
   api.nvim_create_autocmd({ "ModeChanged", "RecordingEnter", "RecordingLeave" }, {

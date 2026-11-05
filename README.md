@@ -315,8 +315,9 @@ section replaces that section's defaults; `{}` removes it. The example above
 shows the defaults. `cwd` is also available. `filename.path` accepts `relative`,
 `absolute` or `tail`. Filename components include modified/read-only indicators.
 `location` uses one-based line and byte column. `progress` shows Top, Bot or a
-percentage; `lsp` lists attached client names. The recording indicator shows the
-active register. Components that have no data disappear.
+percentage; `lsp` lists attached client names. While recording a macro, a compact
+`● REC @a` badge shows the active register in bold red on a softly tinted
+background. Its colors follow the theme. Components that have no data disappear.
 Sections use solid theme-derived backgrounds, with brighter surfaces for Git and
 file metadata, and mode-colored ends. Diagnostics and custom component colors
 retain their foreground on the section background. Separators follow adjoining

@@ -29,6 +29,10 @@ local function check()
   local status_bg = api.nvim_get_hl(0, { name = "UiToolsStatus", link = false }).bg
   t.eq(rgb(c.ui.bg ~= "NONE" and c.ui.bg or c.palette.bg), status_bg)
   assert(status_bg ~= api.nvim_get_hl(0, { name = "UiToolsStatusAlt", link = false }).bg)
+  local recording = api.nvim_get_hl(0, { name = "UiToolsStatusRecording", link = false })
+  t.eq(rgb(c.diagnostic.error), recording.fg)
+  t.eq(require("ui_tools.bar").blend(status_bg, c.diagnostic.error, 0.12), recording.bg)
+  assert(recording.bold)
   t.eq(rgb(c.ui.selection_bg), api.nvim_get_hl(0, { name = "UiToolsBufferCurrent", link = false }).bg)
   t.eq(
     rgb(c.ui.bg ~= "NONE" and c.ui.bg or c.palette.bg),

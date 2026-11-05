@@ -39,6 +39,7 @@ try:
       api.nvim_set_hl(0,'Normal',{fg=0xcdd6f4})
       api.nvim_set_hl(0,'Function',{fg=0x88aaff})
       api.nvim_set_hl(0,'String',{fg=0x88ff88})
+      api.nvim_set_hl(0,'DiagnosticError',{fg=0xff6677})
       require('ui_tools').setup({bufferline={auto_hide=-1},statusline={globalstatus=true}})
       source=api.nvim_get_current_buf()
     """)
@@ -82,10 +83,34 @@ try:
     keys("v")
     assert "VISUAL" in status(), status()
     keys("<Esc>")
+    lua("vim.lsp.get_clients=function() return {{name='test_ls'}} end; line.refresh()")
     keys("qq")
-    assert "REC @q" in status(), status()
+    assert "● REC @q" in status(), status()
+    row = ui.grid[-2]
+    start = next(i for i, (c, _) in enumerate(row) if c == "●")
+    badge = ui.attrs[row[start][1]]
+    assert badge.get("foreground") == 0xFF6677 and badge.get("bold"), badge
+    assert badge.get("background") not in (base, alt), badge
+    assert all(ui.attrs[row[i][1]] == badge for i in range(start, start + len("● REC @q")))
+    # The badge is its own surface, including beside LSP in the same section.
+    for index, foreground, background in (
+        (start - 2, badge["background"], base),
+        (start + len("● REC @q") + 1, base, badge["background"]),
+    ):
+        assert row[index][0] == "", row
+        attr = ui.attrs[row[index][1]]
+        assert attr.get("foreground") == foreground and attr.get("background") == background, attr
+    ui.request("nvim_ui_try_resize", [42, 12])
+    assert "● REC @q" in status(), status()
+    ui.request("nvim_ui_try_resize", [150, 24])
+    lua("line.setup({globalstatus=true,icons=false})")
+    assert "REC @q" in status() and "●" not in status(), status()
+    lua("line.setup({globalstatus=true})")
+    assert "● REC @q" in status(), status()
     keys("jq")
     assert "REC @q" not in status(), status()
+    assert not any(ui.attrs[a].get("background") == badge["background"] for _, a in ui.grid[-2])
+    lua("vim.lsp.get_clients=old_clients; line.refresh()")
 
     # Native per-window statuslines preserve each buffer and location.
     lua("""

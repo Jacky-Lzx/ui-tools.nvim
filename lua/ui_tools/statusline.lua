@@ -49,6 +49,11 @@ local function highlights(c)
       UiToolsStatusWarn = { fg = c.diagnostic.warn },
       UiToolsStatusInfo = { fg = c.diagnostic.info },
       UiToolsStatusHint = { fg = c.diagnostic.hint },
+      UiToolsStatusRecording = {
+        fg = c.diagnostic.error,
+        bg = bar.blend(bg, c.diagnostic.error, 0.12),
+        bold = true,
+      },
     }
     for mode, color in pairs({
       Normal = c.ui.accent,
@@ -87,6 +92,13 @@ local function highlights(c)
       fg = comment.fg or bar.blend(bg, fg, 0.55),
       bg = bg,
     })
+    local red = api.nvim_get_hl(0, { name = "DiagnosticError", link = false }).fg or 0xff6666
+    api.nvim_set_hl(0, "UiToolsStatusRecording", {
+      default = true,
+      fg = red,
+      bg = bar.blend(bg, red, 0.12),
+      bold = true,
+    })
     for mode, source in pairs({
       Normal = "Function",
       Insert = "String",
@@ -107,7 +119,7 @@ local function highlights(c)
     end
   end
   -- All color resolution happens on theme changes, never during a redraw.
-  local surfaces = vim.list_extend({ "", "Alt", "Inactive" }, modes)
+  local surfaces = vim.list_extend({ "", "Alt", "Inactive", "Recording" }, modes)
   local muted = c and c.ui.muted or api.nvim_get_hl(0, { name = "Comment", link = false }).fg
   for _, from in ipairs(surfaces) do
     local a = api.nvim_get_hl(0, { name = "UiToolsStatus" .. from, link = false })
@@ -321,9 +333,12 @@ local function context(win, active)
   }
 end
 
-local function surface(section, active, color)
+local function surface(section, active, color, kind)
   if not active then
     return "Inactive"
+  end
+  if kind == "recording" then
+    return "Recording"
   end
   if section == "a" or section == "z" then
     return color
@@ -331,14 +346,14 @@ local function surface(section, active, color)
   return (section == "b" or section == "y") and "Alt" or ""
 end
 
-local function component_color(source, section)
+local function component_color(source, section, kind)
   if not source then
     return
   end
   source = bar.highlight(source)
   local result = {}
   for _, mode in ipairs(modes) do
-    local background = surface(section, true, mode)
+    local background = surface(section, true, mode, kind)
     local name = "UiToolsStatusComponent_" .. source .. "_" .. background
     if not component_colors[name] then
       local hl = api.nvim_get_hl(0, { name = source, link = false })
@@ -373,6 +388,7 @@ local function component_icon(kind, data, spec)
     location = { "ui", "location", "" },
     fileformat = { "ui", "line_ending", "↵" },
     cwd = { "directory", "cwd", "" },
+    recording = { "ui", "recording", "●" },
   }
   local icon = symbols[kind]
   return icon and icons.prefix(unpack(icon)) or ""
@@ -417,7 +433,7 @@ local function compile(layout, data, ctx)
           item.text, item.escaped, item.width = text, bar.escape(text), bar.width(text)
           item.color = spec.color or color
         end
-        item.colors = component_color(item.color, section)
+        item.colors = component_color(item.color, section, kind)
         result[#result + 1] = item
       end
       -- Like native statusline expressions, user callbacks see the target
@@ -506,7 +522,7 @@ local function measure(nodes)
     local previous = nodes[i - 1]
     local spacing = previous
         and previous.side == node.side
-        and (previous.section == node.section and M.options.component_width or M.options.section_width[node.side])
+        and (previous.section == node.section and previous.surface == node.surface and M.options.component_width or M.options.section_width[node.side])
       or 0
     total = total + node.width + 2 + spacing
     if
@@ -581,7 +597,7 @@ function M.render()
         side = item.side,
         priority = item.priority,
         item = item,
-        surface = surface(item.section, active, color),
+        surface = surface(item.section, active, color, item.kind),
         base = base_surface,
       }
     end
@@ -629,7 +645,7 @@ function M.render()
       end
     end
     if previous and previous.side == node.side then
-      if previous.section == node.section then
+      if previous.section == node.section and previous.surface == node.surface then
         result[#result + 1] = "%#UiToolsStatusDivider"
           .. node.surface
           .. "#"

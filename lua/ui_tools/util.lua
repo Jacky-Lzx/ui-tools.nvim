@@ -22,6 +22,11 @@ function M.eligible(win, buf, opts)
     and vim.b[buf].ui_tools_disable ~= true
 end
 
+function M.searching()
+  local cmdtype = vim.fn.getcmdtype()
+  return cmdtype == "/" or cmdtype == "?"
+end
+
 function M.redraw()
   -- Public command works on all supported releases; schedule outside redraw callbacks.
   if M.pending then
@@ -29,6 +34,16 @@ function M.redraw()
   end
   M.pending = true
   vim.schedule(function()
+    if M.searching() then
+      vim.api.nvim_create_autocmd("CmdlineLeave", {
+        once = true,
+        callback = function()
+          M.pending = false
+          M.redraw()
+        end,
+      })
+      return
+    end
     M.pending = false
     vim.cmd("redraw!")
   end)

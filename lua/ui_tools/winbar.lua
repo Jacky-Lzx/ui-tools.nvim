@@ -58,7 +58,7 @@ local function eligible(win, buf)
 end
 
 local function update()
-  if not M.enabled then
+  if not M.enabled or require("ui_tools.util").searching() then
     return
   end
   local used, icon_colors = {}, {}
@@ -301,7 +301,7 @@ function M.setup(opts)
       end
     end,
   })
-  api.nvim_create_autocmd({ "WinClosed", "VimResized", "WinResized", "ColorScheme" }, {
+  api.nvim_create_autocmd({ "WinClosed", "VimResized", "WinResized", "ColorScheme", "CmdlineLeave" }, {
     group = group,
     callback = function()
       queue.request()

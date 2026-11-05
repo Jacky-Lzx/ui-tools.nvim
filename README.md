@@ -29,6 +29,9 @@ Disable competing renderers (for example Snacks indent) when enabling a module.
 No colorscheme or icon font is required. Override `UiTools*` highlight groups
 through your colorscheme; plugin defaults use standard highlight links.
 
+During native `/` and `?` input, annotation and bar refreshes wait until the
+search is confirmed or cancelled, preserving incremental search highlighting.
+
 ## Color previews
 
 `colors = true` shows an inline `■` before each color literal, without changing

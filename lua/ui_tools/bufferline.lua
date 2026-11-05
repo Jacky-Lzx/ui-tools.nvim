@@ -112,7 +112,7 @@ local function sidebar()
 end
 
 local function update()
-  if not M.enabled or vim.o.tabline ~= format then
+  if not M.enabled or vim.o.tabline ~= format or util.searching() then
     return
   end
   if scan then
@@ -584,6 +584,7 @@ function M.setup(opts)
     "VimResized",
     "WinResized",
     "ColorScheme",
+    "CmdlineLeave",
   }, {
     group = group,
     callback = function()

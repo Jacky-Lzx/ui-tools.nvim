@@ -48,6 +48,12 @@ function M.new(name)
     if not self.enabled then
       return
     end
+    local cmdtype = vim.fn.getcmdtype()
+    if cmdtype == "/" or cmdtype == "?" then
+      -- Rebuilding source extmarks can erase incsearch's current-match color
+      -- in frames flushed by a command-line renderer. Resume after it closes.
+      return
+    end
     local visible = collect()
     self.visible = visible
     for buf in pairs(self.marked) do
@@ -115,6 +121,7 @@ function M.new(name)
       "TextChangedI",
       "TextChangedP",
       "InsertLeave",
+      "CmdlineLeave",
       "FileType",
       "Syntax",
       "OptionSet",

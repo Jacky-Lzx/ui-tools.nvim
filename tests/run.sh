@@ -16,6 +16,7 @@ python3 tests/ui.py
 python3 tests/colors_ui.py
 python3 tests/todo_ui.py
 python3 tests/annotations_pty.py
+python3 tests/search_ui.py
 python3 tests/statuscolumn_ui.py
 python3 tests/statuscolumn_style_ui.py
 python3 tests/scrollbar_ui.py

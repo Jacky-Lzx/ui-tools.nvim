@@ -95,7 +95,7 @@ local function release(win)
 end
 
 function M.refresh()
-  if not M.enabled then
+  if not M.enabled or util.searching() then
     return
   end
   local opts = M.options

@@ -437,7 +437,7 @@ local function compile(layout, data, ctx)
 end
 
 local function update()
-  if not M.enabled then
+  if not M.enabled or util.searching() then
     return
   end
   synchronize()

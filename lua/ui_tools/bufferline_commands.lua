@@ -2,25 +2,25 @@ local M = {}
 local api = vim.api
 local owned = {}
 
-local function register(name, action, opts)
-  -- Coexist with commands supplied by another plugin or the user's config.
-  if api.nvim_get_commands({})[name] then
-    return
-  end
-  opts = vim.tbl_extend("force", { desc = "ui-tools: " .. name, force = false, bar = true }, opts or {})
-  api.nvim_create_user_command(name, function(args)
-    local ok, result, err = pcall(action, args)
-    if not ok or err or result == false then
-      vim.notify(
-        "ui-tools: " .. (not ok and tostring(result) or err or "No buffer available for " .. name),
-        vim.log.levels.WARN
-      )
-    end
-  end, opts)
-  owned[name] = api.nvim_get_commands({})[name]
-end
-
 function M.setup(buffers)
+  local existing, created = api.nvim_get_commands({}), {}
+  local function register(name, action, opts)
+    -- Coexist with commands supplied by another plugin or the user's config.
+    if existing[name] then
+      return
+    end
+    opts = vim.tbl_extend("force", { desc = "ui-tools: " .. name, force = false, bar = true }, opts or {})
+    api.nvim_create_user_command(name, function(args)
+      local ok, result, err = pcall(action, args)
+      if not ok or err or result == false then
+        vim.notify(
+          "ui-tools: " .. (not ok and tostring(result) or err or "No buffer available for " .. name),
+          vim.log.levels.WARN
+        )
+      end
+    end, opts)
+    created[name] = true
+  end
   local function number(args)
     local value = args.args == "" and 1 or tonumber(args.args)
     assert(value and value >= 1 and value % 1 == 0, "Expected a positive integer")
@@ -66,9 +66,18 @@ function M.setup(buffers)
       return buffers.close_many(scope, args.bang)
     end, { bang = true })
   end
+  if next(created) then
+    local installed = api.nvim_get_commands({})
+    for name in pairs(created) do
+      owned[name] = installed[name]
+    end
+  end
 end
 
 function M.disable()
+  if not next(owned) then
+    return
+  end
   local commands = api.nvim_get_commands({})
   for name, command in pairs(owned) do
     local current = commands[name]

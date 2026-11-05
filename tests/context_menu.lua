@@ -21,7 +21,14 @@ api.nvim_buf_set_name(buf, vim.fn.getcwd() .. "/sample.lua")
 local old = function() end
 vim.keymap.set("n", "<RightMouse>", old, { silent = true, desc = "original" })
 vim.keymap.set("x", "<RightMouse>", "y", { expr = false, desc = "visual original" })
+local get_maps, scans = api.nvim_get_keymap, 0
+api.nvim_get_keymap = function(...)
+  scans = scans + 1
+  return get_maps(...)
+end
 menu.setup()
+api.nvim_get_keymap = get_maps
+h.eq(3, scans)
 assert(menu.enabled)
 assert(vim.fn.maparg("<RightMouse>", "n", false, true).callback ~= old)
 menu.setup()

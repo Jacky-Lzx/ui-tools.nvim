@@ -31,7 +31,14 @@ local function start(names)
     buffers[#buffers + 1] = buf
   end
   api.nvim_set_current_buf(buffers[1])
+  local get_commands, scans = api.nvim_get_commands, 0
+  api.nvim_get_commands = function(...)
+    scans = scans + 1
+    return get_commands(...)
+  end
   ui.setup({ bufferline = { auto_hide = -1, exclude = { "excluded" } } })
+  api.nvim_get_commands = get_commands
+  assert(scans <= 2, "buffer commands repeatedly enumerated the global command table")
   warnings = {}
   return unpack(buffers)
 end

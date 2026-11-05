@@ -517,14 +517,12 @@ function M.setup(opts)
   M.enabled = true
   if options.mouse ~= false then
     for _, mode in ipairs({ "n", "x", "i" }) do
+      local previous_maps = {}
+      for _, mapping in ipairs(api.nvim_get_keymap(mode)) do
+        previous_maps[mapping.lhs] = mapping
+      end
       for _, lhs in ipairs(mouse_keys) do
-        local previous
-        for _, mapping in ipairs(api.nvim_get_keymap(mode)) do
-          if mapping.lhs == lhs then
-            previous = mapping
-            break
-          end
-        end
+        local previous = previous_maps[lhs]
         local callback = function()
           M.open({ mouse = true })
         end
@@ -537,14 +535,19 @@ end
 
 function M.disable()
   M.close()
+  local current = {}
   for _, saved in ipairs(mappings) do
-    for _, mapping in ipairs(api.nvim_get_keymap(saved.mode)) do
-      if mapping.lhs == saved.lhs and mapping.callback == saved.callback then
-        vim.keymap.del(saved.mode, saved.lhs)
-        if saved.previous then
-          vim.fn.mapset(saved.mode, false, saved.previous)
-        end
-        break
+    if not current[saved.mode] then
+      current[saved.mode] = {}
+      for _, mapping in ipairs(api.nvim_get_keymap(saved.mode)) do
+        current[saved.mode][mapping.lhs] = mapping
+      end
+    end
+    local mapping = current[saved.mode][saved.lhs]
+    if mapping and mapping.callback == saved.callback then
+      vim.keymap.del(saved.mode, saved.lhs)
+      if saved.previous then
+        vim.fn.mapset(saved.mode, false, saved.previous)
       end
     end
   end

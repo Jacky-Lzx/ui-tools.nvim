@@ -1,5 +1,7 @@
 local M = {}
 local modules = {
+  "animate",
+  "scroll",
   "dashboard",
   "fold",
   "bufferline",

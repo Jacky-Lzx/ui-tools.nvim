@@ -869,3 +869,25 @@ belong to theme-tools; no extra icon dependency is needed for this integration.
 Without theme-tools, existing standalone defaults remain available.
 Local icon-disable options still apply. Configure shared overrides through
 `require("theme_tools").setup({ icons = { overrides = { ... } } })`.
+
+## Animation and smooth scrolling
+
+Both modules are off by default. `animate` is the master animation switch;
+`scroll` adds optional Normal-mode mappings for Ctrl-d/u/f/b/e/y, retaining
+existing user mappings and native counts. Enable both for smooth scrolling:
+
+```lua
+require("ui_tools").setup({ animate = {}, scroll = { duration = 140 } })
+require("ui_tools").toggle("animate")
+require("ui_tools").toggle("scroll")
+```
+
+`require("ui_tools.animate").run({ from = 0, to = 1, duration = 140,
+step = function(value) vim.g.animation_value = value end,
+done = function() vim.g.animation_done = true end })` returns a handle
+with `cancel()` and `is_active()`. Disabled animations apply their destination
+immediately. Cancellation releases the timer and does not invoke `done`.
+Scrolling settles at the native destination on disable/Insert mode and cancels
+when the buffer/window changes. Burst input accumulates toward the destination.
+Mouse scrolling, wrapped, diff, special and large-file buffers, closed folds and jumps over 1000
+lines retain native immediate scrolling.

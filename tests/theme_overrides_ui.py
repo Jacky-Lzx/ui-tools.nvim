@@ -44,7 +44,7 @@ try:
       original=require('theme_tools.colors').snapshot()
       assert(t.set('theme-tools-dracula')); vim.wait(60)
     """)
-    check(0xF1FA8C, 0x3E4452)
+    check(0xBD93F9, 0x3E4452)
     lua("require('theme_tools.colors').restore(original); vim.wait(60)")
     check(0xB4BEFE, 0x000000)
     lua("""

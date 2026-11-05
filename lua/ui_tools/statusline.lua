@@ -124,15 +124,28 @@ local function highlights(c)
       })
     end
   end
-  -- All color resolution happens on theme changes, never during a redraw.
+  -- Resolve user/theme surfaces once. Different modes and inactive/active
+  -- surfaces never coexist in one frame, so they need no connecting edges.
+  local theme = require("ui_tools.theme")
   local surfaces = vim.list_extend({ "", "Alt", "Inactive", "Recording" }, modes)
+  local colors, mode_surfaces = {}, {}
+  for _, name in ipairs(modes) do
+    mode_surfaces[name] = true
+  end
+  for _, name in ipairs(surfaces) do
+    colors[name] = api.nvim_get_hl(0, { name = "UiToolsStatus" .. name, link = false })
+  end
   local muted = c and c.ui.muted or api.nvim_get_hl(0, { name = "Comment", link = false }).fg
   for _, from in ipairs(surfaces) do
-    local a = api.nvim_get_hl(0, { name = "UiToolsStatus" .. from, link = false })
-    require("ui_tools.theme").define("UiToolsStatusDivider" .. from, { fg = muted or a.fg, bg = a.bg })
+    local a = colors[from]
+    theme.define("UiToolsStatusDivider" .. from, { fg = muted or a.fg, bg = a.bg })
     for _, to in ipairs(surfaces) do
-      local b = api.nvim_get_hl(0, { name = "UiToolsStatus" .. to, link = false })
-      require("ui_tools.theme").define("UiToolsStatusEdge" .. from .. "To" .. to, { fg = a.bg, bg = b.bg })
+      if
+        from == to
+        or from ~= "Inactive" and to ~= "Inactive" and not (mode_surfaces[from] and mode_surfaces[to])
+      then
+        theme.define("UiToolsStatusEdge" .. from .. "To" .. to, { fg = a.bg, bg = colors[to].bg })
+      end
     end
   end
 end

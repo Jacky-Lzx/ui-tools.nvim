@@ -76,8 +76,8 @@ local get_clients, count, list_bufs, system =
 local function forbidden()
   error("expensive provider in statusline render")
 end
-local icon_get, get_hl = require("ui_tools.icons").get, api.nvim_get_hl
-require("ui_tools.icons").get, api.nvim_get_hl = forbidden, forbidden
+local icon_get, get_hl, set_hl = require("ui_tools.icons").get, api.nvim_get_hl, api.nvim_set_hl
+require("ui_tools.icons").get, api.nvim_get_hl, api.nvim_set_hl = forbidden, forbidden, forbidden
 vim.lsp.get_clients, vim.diagnostic.count, api.nvim_list_bufs, vim.fn.system =
   forbidden, forbidden, forbidden, forbidden
 for row = 1, 3 do
@@ -86,7 +86,7 @@ for row = 1, 3 do
 end
 vim.lsp.get_clients, vim.diagnostic.count, api.nvim_list_bufs, vim.fn.system =
   get_clients, count, list_bufs, system
-require("ui_tools.icons").get, api.nvim_get_hl = icon_get, get_hl
+require("ui_tools.icons").get, api.nvim_get_hl, api.nvim_set_hl = icon_get, get_hl, set_hl
 t.eq(1, queries)
 vim.b.git_tools_status = { head = "updated", added = 4 }
 api.nvim_exec_autocmds("User", { pattern = "GitToolsUpdate" })
@@ -148,6 +148,17 @@ assert(vim.wo[left].statusline:find("ui_tools.statusline", 1, true))
 assert(text(left):find("other.txt", 1, true), text(left))
 assert(text(right):find("中文%{evil}.lua", 1, true), text(right))
 assert(not text(right):find("NORMAL", 1, true), text(right))
+-- Separate inactive sections still need a same-surface separator. Its palette
+-- must also survive theme refreshes without doing highlight work in render().
+local function inactive_edge()
+  local edge = api.nvim_get_hl(0, { name = "UiToolsStatusEdgeInactiveToInactive", link = false })
+  local base = api.nvim_get_hl(0, { name = "UiToolsStatusInactive", link = false })
+  t.eq(base.bg, edge.fg)
+  t.eq(base.bg, edge.bg)
+end
+inactive_edge()
+api.nvim_exec_autocmds("ColorScheme", {})
+inactive_edge()
 -- Relative filenames follow each split's local directory, including when both
 -- splits display the same buffer. User callbacks also see that split's vim.b.
 api.nvim_win_set_buf(left, a)

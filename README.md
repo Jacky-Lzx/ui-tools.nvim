@@ -343,7 +343,10 @@ The bar never runs Git or starts a provider. Without a provider these components
 are empty. `require("ui_tools.statusline").refresh()` explicitly refreshes all
 displayed buffer data and custom components after other external changes.
 Use `statusline.update()` to schedule only custom-component updates without
-invalidating diagnostic, LSP or file snapshots.
+invalidating diagnostic, LSP or file snapshots. Separator colors are resolved once
+per palette change. Only surfaces that can coexist within a frame receive edge
+highlights; every mode and inactive same-surface separators are prepared before
+redraw. Rendering itself neither reads nor writes highlight definitions.
 
 Custom components return plain text, with statusline metacharacters escaped:
 

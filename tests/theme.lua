@@ -56,7 +56,7 @@ local before = api.nvim_get_hl(0, { name = "UiToolsStatusNormal", link = false }
 ui.disable()
 assert(themes.set("morning"))
 assert(
-  vim.tbl_isempty(api.nvim_get_hl(0, { name = "UiToolsStatusNormal", create = false })),
+  vim.tbl_isempty(api.nvim_get_hl(0, { name = "UiToolsStatusNormal", link = false, create = false })),
   "disabled UI kept its subscription"
 )
 assert(before.bg == 0x123456)

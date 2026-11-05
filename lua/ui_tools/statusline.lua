@@ -66,7 +66,7 @@ local function highlights(c)
       groups["UiToolsStatus" .. mode] = { fg = c.palette.bg, bg = color, bold = true }
     end
     for name, value in pairs(groups) do
-      api.nvim_set_hl(0, name, value)
+      require("ui_tools.theme").define(name, value)
     end
   else
     util.hl({
@@ -81,19 +81,19 @@ local function highlights(c)
     local bg = normal.bg or (vim.o.background == "light" and 0xffffff or 0x202020)
     local fg = normal.fg or (vim.o.background == "light" and 0x202020 or 0xffffff)
     -- Keep solid surfaces even with transparent or reversed native bars.
-    api.nvim_set_hl(0, "UiToolsStatus", { default = true, fg = fg, bg = bg })
-    api.nvim_set_hl(0, "UiToolsStatusAlt", {
+    require("ui_tools.theme").define("UiToolsStatus", { default = true, fg = fg, bg = bg })
+    require("ui_tools.theme").define("UiToolsStatusAlt", {
       default = true,
       fg = fg,
       bg = bar.blend(bg, fg, 0.09),
     })
-    api.nvim_set_hl(0, "UiToolsStatusInactive", {
+    require("ui_tools.theme").define("UiToolsStatusInactive", {
       default = true,
       fg = comment.fg or bar.blend(bg, fg, 0.55),
       bg = bg,
     })
     local red = api.nvim_get_hl(0, { name = "DiagnosticError", link = false }).fg or 0xff6666
-    api.nvim_set_hl(0, "UiToolsStatusRecording", {
+    require("ui_tools.theme").define("UiToolsStatusRecording", {
       default = true,
       fg = red,
       bg = bar.blend(bg, red, 0.12),
@@ -109,7 +109,7 @@ local function highlights(c)
     }) do
       local accent = api.nvim_get_hl(0, { name = source, link = false })
       local color = accent.fg or fg
-      api.nvim_set_hl(0, "UiToolsStatus" .. mode, {
+      require("ui_tools.theme").define("UiToolsStatus" .. mode, {
         default = true,
         fg = 0x000000,
         bg = color,
@@ -123,10 +123,10 @@ local function highlights(c)
   local muted = c and c.ui.muted or api.nvim_get_hl(0, { name = "Comment", link = false }).fg
   for _, from in ipairs(surfaces) do
     local a = api.nvim_get_hl(0, { name = "UiToolsStatus" .. from, link = false })
-    api.nvim_set_hl(0, "UiToolsStatusDivider" .. from, { fg = muted or a.fg, bg = a.bg })
+    require("ui_tools.theme").define("UiToolsStatusDivider" .. from, { fg = muted or a.fg, bg = a.bg })
     for _, to in ipairs(surfaces) do
       local b = api.nvim_get_hl(0, { name = "UiToolsStatus" .. to, link = false })
-      api.nvim_set_hl(0, "UiToolsStatusEdge" .. from .. "To" .. to, { fg = a.bg, bg = b.bg })
+      require("ui_tools.theme").define("UiToolsStatusEdge" .. from .. "To" .. to, { fg = a.bg, bg = b.bg })
     end
   end
 end

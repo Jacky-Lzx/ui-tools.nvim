@@ -28,6 +28,10 @@ Zoom, scope dimming, current-line pulse and optional GitTools markers.
 Disable competing renderers (for example Snacks indent) when enabling a module.
 No colorscheme or icon font is required. Override `UiTools*` highlight groups
 through your colorscheme; plugin defaults use standard highlight links.
+With theme-tools, palette updates change private `UiToolsDefault*` targets.
+Explicit public `UiTools*` definitions from a colorscheme or user override take
+precedence, including across repeated setup, palette refreshes and preview rollback.
+Override public groups; private targets are implementation details.
 
 During native `/` and `?` input, annotation and bar refreshes wait until the
 search is confirmed or cancelled, preserving incremental search highlighting.

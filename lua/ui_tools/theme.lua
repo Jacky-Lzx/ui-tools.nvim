@@ -2,6 +2,23 @@
 local M = {}
 local bindings = {}
 
+-- Public groups belong to the colorscheme/user; only private defaults are ours.
+-- Stable links also survive theme preview snapshots and exact restoration.
+function M.define(name, value, fallback)
+  local api = vim.api
+  local target = "UiToolsDefault" .. name:sub(#"UiTools" + 1)
+  local function empty(group)
+    return vim.tbl_isempty(api.nvim_get_hl(0, { name = group, link = true, create = false }))
+  end
+  if not fallback or empty(target) then
+    local definition = vim.deepcopy(value)
+    definition.default = nil
+    api.nvim_set_hl(0, target, definition)
+  end
+  -- default=true alone can skip an explicitly cleared group after rollback.
+  api.nvim_set_hl(0, name, { link = target, default = not empty(name) })
+end
+
 function M.unbind(id)
   local entry = bindings[id]
   if entry then

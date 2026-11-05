@@ -55,7 +55,7 @@ end
 
 function M.hl(groups)
   for name, link in pairs(groups) do
-    vim.api.nvim_set_hl(0, name, { default = true, link = link })
+    require("ui_tools.theme").define(name, { link = link }, true)
   end
 end
 

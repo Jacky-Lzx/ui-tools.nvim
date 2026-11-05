@@ -44,7 +44,7 @@ local function highlights(c)
       UiToolsDashboardFooter = { fg = c.ui.muted },
     }
     for name, value in pairs(groups) do
-      vim.api.nvim_set_hl(0, name, value)
+      require("ui_tools.theme").define(name, value)
     end
     return
   end

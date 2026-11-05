@@ -21,7 +21,7 @@ local function highlights(c)
     UiToolsBufferSeparatorVisible = { fg = colors.accent, bg = bar.blend(colors.bg, colors.fg, 0.06) },
   }
   for name, value in pairs(groups) do
-    api.nvim_set_hl(0, name, value)
+    require("ui_tools.theme").define(name, value)
   end
 end
 

@@ -21,7 +21,11 @@ local function highlights(colors)
     UiToolsWinbarClient = { fg = c.muted, bg = c.bg },
   }
   for name, value in pairs(groups) do
-    api.nvim_set_hl(0, name, value)
+    if name:match("^UiTools") then
+      require("ui_tools.theme").define(name, value)
+    else
+      api.nvim_set_hl(0, name, value)
+    end
   end
 end
 

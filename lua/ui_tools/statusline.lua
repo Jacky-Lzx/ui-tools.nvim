@@ -309,9 +309,11 @@ local function value(kind, data, ctx, spec)
     return register == "" and "" or "REC @" .. register
   end
   if kind == "filename" then
+    -- nvim_win_call() switches buffer context without changing the process cwd.
+    -- Resolve relative names against the target window's directory explicitly.
     local text = spec.path == "absolute" and data.absolute
       or spec.path == "tail" and data.tail
-      or bar.text(vim.fn.fnamemodify(data.absolute, ":~:."))
+      or bar.text(vim.fs.relpath(ctx.absolute_cwd, data.absolute) or vim.fn.fnamemodify(data.absolute, ":~"))
     return text .. (data.modified and " [+]" or "") .. (data.readonly and " [RO]" or "")
   end
   if kind == "diagnostics" then
@@ -343,6 +345,7 @@ local function context(win, active)
   local buf = api.nvim_win_get_buf(win)
   -- getcwd() defaults to the current tab, even when passed a window ID.
   local tabnr = api.nvim_tabpage_get_number(api.nvim_win_get_tabpage(win))
+  local cwd = vim.fn.getcwd(win, tabnr)
   local label = mode()
   return {
     win = win,
@@ -352,7 +355,8 @@ local function context(win, active)
     cursor = api.nvim_win_get_cursor(win),
     lines = api.nvim_buf_line_count(buf),
     width = M.options.globalstatus and vim.o.columns or api.nvim_win_get_width(win),
-    cwd = bar.text(vim.fn.fnamemodify(vim.fn.getcwd(win, tabnr), ":~")),
+    absolute_cwd = cwd,
+    cwd = bar.text(vim.fn.fnamemodify(cwd, ":~")),
     filetype = vim.bo[buf].filetype,
   }
 end

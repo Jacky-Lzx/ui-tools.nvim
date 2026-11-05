@@ -3,6 +3,8 @@ local api = vim.api
 local ui = require("ui_tools")
 local line = require("ui_tools.statusline")
 local root = vim.fn.getcwd()
+local directory = assert(vim.uv.fs_realpath("/tmp"))
+local filename = directory .. "/ui-tools-statusline/中文%{evil}.lua"
 assert(
   #api.nvim_list_uis() > 0 and vim.o.columns == 240,
   "Run python3 tests/lua_ui.py tests/statusline.lua --width 240"
@@ -15,7 +17,7 @@ local function settle()
   vim.wait(60)
 end
 local a = t.buffer({ "one", "two", "three" })
-api.nvim_buf_set_name(a, "/tmp/ui-tools-statusline/中文%{evil}.lua")
+api.nvim_buf_set_name(a, filename)
 vim.bo.filetype = "lua"
 vim.bo.modified = false
 vim.b.git_tools_status = { head = "feature/%branch", added = 2, changed = 3, removed = 1 }
@@ -60,7 +62,7 @@ t.eq(1, queries)
 for _, fragment in ipairs({
   " NORMAL",
   " feature/%branch",
-  " /tmp/ui-tools-statusline/",
+  " " .. directory .. "/ui-tools-statusline/",
   "",
   "",
   "│",
@@ -137,7 +139,7 @@ line.setup({ globalstatus = true })
 vim.cmd("vsplit")
 local left, right = api.nvim_get_current_win(), vim.fn.win_getid(vim.fn.winnr("#"))
 local b = t.buffer({ "different" })
-api.nvim_buf_set_name(b, "/tmp/ui-tools-statusline/other.txt")
+api.nvim_buf_set_name(b, directory .. "/ui-tools-statusline/other.txt")
 -- A buffer can restore its saved native window-local option before the deferred
 -- BufWinEnter update. It must not permanently surrender the bar to that value.
 api.nvim_set_option_value("statusline", "", { win = left, scope = "local" })
@@ -150,18 +152,20 @@ assert(not text(right):find("NORMAL", 1, true), text(right))
 -- splits display the same buffer. User callbacks also see that split's vim.b.
 api.nvim_win_set_buf(left, a)
 api.nvim_win_call(left, function()
-  vim.cmd("lcd /tmp")
+  vim.cmd("lcd " .. vim.fn.fnameescape(directory))
 end)
 api.nvim_win_call(right, function()
-  vim.cmd("lcd /tmp")
+  vim.cmd("lcd " .. vim.fn.fnameescape(directory))
 end)
 line.refresh()
-assert(text(left):find("ui-tools-statusline/中文%{evil}.lua", 1, true))
+assert(text(left):find("ui-tools-statusline/中文%{evil}.lua", 1, true), text(left))
+assert(not text(left):find(directory .. "/", 1, true), text(left))
 api.nvim_win_call(right, function()
   vim.cmd("lcd /")
 end)
 line.refresh()
-assert(text(right):find("tmp/ui-tools-statusline/中文%{evil}.lua", 1, true))
+assert(text(right):find(filename:sub(2), 1, true), text(right))
+assert(not text(left):find(directory .. "/", 1, true), text(left))
 line.setup({
   sections = {
     c = {

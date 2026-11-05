@@ -65,7 +65,14 @@ try:
     assert attrs(4, 6).get("foreground") == 0x333333, "Ancestor continuation too bright"
     assert attrs(4, 7).get("foreground") == 0x888888, "Current fold continuation not highlighted"
     assert attrs(11, 7).get("foreground") == 0x333333, "Adjacent fold borrowed cursor scope"
-    lua("vim.api.nvim_win_set_cursor(0,{12,0}); vim.wait(80)")
+    ui.request("nvim_input", ["12G"])
+    lua("return 1")
+    lua("""
+      assert(vim.wait(2000, function()
+        local scope=stc.scopes[vim.api.nvim_get_current_win()]
+        return scope and scope.start==11
+      end, 10), 'Cursor movement did not refresh fold scope')
+    """)
     assert attrs(4, 7).get("foreground") == 0x333333
     assert attrs(11, 7).get("foreground") == 0x888888, "Cursor movement did not update scope"
     lua("vim.api.nvim_buf_clear_namespace(0,git,0,-1); stc.refresh()")

@@ -45,6 +45,9 @@ local function highlights(c)
       UiToolsStatusAlt = { fg = c.ui.fg, bg = bar.blend(bg, c.ui.fg, 0.09) },
       UiToolsStatusInactive = { fg = c.ui.muted, bg = bg },
       UiToolsStatusDiff = { fg = c.git.change },
+      UiToolsStatusDiffAdd = { fg = c.git.add },
+      UiToolsStatusDiffChange = { link = "UiToolsStatusDiff" },
+      UiToolsStatusDiffDelete = { fg = c.git.delete },
       UiToolsStatusError = { fg = c.diagnostic.error },
       UiToolsStatusWarn = { fg = c.diagnostic.warn },
       UiToolsStatusInfo = { fg = c.diagnostic.info },
@@ -71,6 +74,9 @@ local function highlights(c)
   else
     util.hl({
       UiToolsStatusDiff = "Special",
+      UiToolsStatusDiffAdd = "Added",
+      UiToolsStatusDiffChange = "UiToolsStatusDiff",
+      UiToolsStatusDiffDelete = "Removed",
       UiToolsStatusError = "DiagnosticError",
       UiToolsStatusWarn = "DiagnosticWarn",
       UiToolsStatusInfo = "DiagnosticInfo",
@@ -254,17 +260,32 @@ local function snapshot(buf, flags)
   if not cache[buf] or flags.all or flags.git then
     local git = vim.b[buf].git_tools_status or vim.b[buf].gitsigns_status_dict or {}
     data.branch = bar.text(git.head or "")
-    local changes = {}
-    for _, field in ipairs({ { "added", "+" }, { "changed", "~" }, { "removed", "-" } }) do
+    data.diff_parts = {}
+    for _, field in ipairs({
+      { "added", "+", "Add" },
+      { "changed", "~", "Change" },
+      { "removed", "-", "Delete" },
+    }) do
       local n = tonumber(git[field[1]]) or 0
       if n > 0 then
-        changes[#changes + 1] = field[2] .. n
+        data.diff_parts[#data.diff_parts + 1] = { field[2] .. n, "UiToolsStatusDiff" .. field[3] }
       end
     end
-    data.diff = table.concat(changes, " ")
   end
   cache[buf] = data
   return data
+end
+
+-- Keep semantic ranges beside plain text; formatters still receive normal text.
+local function joined(parts)
+  local text, spans = "", {}
+  for _, part in ipairs(parts) do
+    text = text .. (text ~= "" and " " or "")
+    local first = #text
+    text = text .. part[1]
+    spans[#spans + 1] = { first = first, last = #text, color = part[2] }
+  end
+  return text, nil, spans
 end
 
 local function value(kind, data, ctx, spec)
@@ -294,20 +315,22 @@ local function value(kind, data, ctx, spec)
     return text .. (data.modified and " [+]" or "") .. (data.readonly and " [RO]" or "")
   end
   if kind == "diagnostics" then
-    local parts, color = {}, nil
+    local parts = {}
     local symbols = spec.symbols or data.diagnostic_symbols or {}
     local names = { "error", "warn", "info", "hint" }
     for severity, label in ipairs({ "E", "W", "I", "H" }) do
       if (data.diagnostics[severity] or 0) > 0 then
         local symbol = symbols[severity] or symbols[names[severity]] or label
-        parts[#parts + 1] = bar.text(symbol) .. data.diagnostics[severity]
-        color = color or "UiToolsStatus" .. ({ "Error", "Warn", "Info", "Hint" })[severity]
+        parts[#parts + 1] = {
+          bar.text(symbol) .. data.diagnostics[severity],
+          "UiToolsStatus" .. ({ "Error", "Warn", "Info", "Hint" })[severity],
+        }
       end
     end
-    return table.concat(parts, " "), color
+    return joined(parts)
   end
   if kind == "diff" then
-    return data.diff, "UiToolsStatusDiff"
+    return joined(data.diff_parts or {})
   end
   if kind == "cwd" then
     return ctx.cwd
@@ -416,22 +439,31 @@ local function compile(layout, data, ctx)
         if dynamic[kind] and not spec.fmt then
           item.dynamic = true
         else
-          local text, color
+          local text, color, spans
           if type(kind) == "function" then
             text = kind(ctx)
           else
-            text, color = value(kind, data, ctx, spec)
+            text, color, spans = value(kind, data, ctx, spec)
           end
           if spec.fmt then
             text = spec.fmt(text, ctx)
+            spans = nil
           end
           text = bar.text(text)
           text = text ~= "" and (item.icon .. text) or ""
+          item.full_text = text
           if spec.max_width then
             text = bar.truncate(text, spec.max_width)
           end
           item.text, item.escaped, item.width = text, bar.escape(text), bar.width(text)
           item.color = spec.color or color
+          if spans and not spec.color then
+            item.spans = spans
+            for _, span in ipairs(spans) do
+              span.first, span.last = span.first + #item.icon, span.last + #item.icon
+              span.colors = component_color(span.color, section, kind)
+            end
+          end
         end
         item.colors = component_color(item.color, section, kind)
         result[#result + 1] = item
@@ -655,7 +687,27 @@ function M.render()
       end
     end
     local hl = active and node.item.colors and node.item.colors[color] or "UiToolsStatus" .. node.surface
-    result[#result + 1] = "%#" .. bar.highlight(hl) .. "# " .. node.escaped .. " "
+    result[#result + 1] = "%#" .. bar.highlight(hl) .. "# "
+    if active and node.item.spans then
+      local offset = 0
+      local limit = node.text == node.item.full_text and #node.text or math.max(0, #node.text - #"…")
+      for _, span in ipairs(node.item.spans) do
+        local first, last = math.min(span.first, limit), math.min(span.last, limit)
+        if first > offset then
+          result[#result + 1] = "%#" .. hl .. "#" .. bar.escape(node.text:sub(offset + 1, first))
+        end
+        if last > first then
+          result[#result + 1] = "%#"
+            .. span.colors[color]
+            .. "#"
+            .. bar.escape(node.text:sub(first + 1, last))
+        end
+        offset = last
+      end
+      result[#result + 1] = "%#" .. hl .. "#" .. bar.escape(node.text:sub(offset + 1)) .. " "
+    else
+      result[#result + 1] = node.escaped .. " "
+    end
     if
       node.side == "left"
       and (not nodes[i + 1] or nodes[i + 1].side ~= "left")

@@ -333,6 +333,9 @@ A string `section_separator` applies to both sides. For a font-free bar, use
 `diagnostics` uses your native diagnostic sign symbols followed by each count,
 falling back to E/W/I/H. Override them per component with
 `{ "diagnostics", symbols = { error = "✖", warn = "▲", info = "●", hint = "◆" } }`.
+Diagnostic counts and Git additions/changes/deletions retain independent semantic
+foregrounds on those surfaces. Component `color` overrides the whole component;
+`fmt` receives plain text and controls its final presentation.
 
 `branch` and `diff` read `b:git_tools_status` or `b:gitsigns_status_dict` supplied
 by an existing provider. They refresh on `User GitToolsUpdate`/`GitSignsUpdate`.

@@ -31,6 +31,9 @@ python3 tests/dashboard_startup_ui.py
 python3 tests/dashboard_bufferline_ui.py
 python3 tests/bufferline_ui.py
 python3 tests/statusline_ui.py
+if [ -d ../theme-tools.nvim ]; then
+  python3 tests/statusline_semantics_ui.py
+fi
 python3 tests/winbar_ui.py
 python3 tests/special_bars_ui.py
 python3 tests/fold_ui.py

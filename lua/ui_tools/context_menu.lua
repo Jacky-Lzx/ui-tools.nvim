@@ -515,7 +515,7 @@ function M.setup(opts)
   end
   highlights()
   M.enabled = true
-  if options.mouse ~= false then
+  if options.mouse == true then
     for _, mode in ipairs({ "n", "x", "i" }) do
       local previous_maps = {}
       for _, mapping in ipairs(api.nvim_get_keymap(mode)) do

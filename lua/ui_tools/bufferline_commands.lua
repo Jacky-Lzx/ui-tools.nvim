@@ -5,21 +5,19 @@ local owned = {}
 function M.setup(buffers)
   local existing, created = api.nvim_get_commands({}), {}
   local function register(name, action, opts)
-    -- Coexist with commands supplied by another plugin or the user's config.
-    if existing[name] then
-      return
-    end
     opts = vim.tbl_extend("force", { desc = "ui-tools: " .. name, force = false, bar = true }, opts or {})
-    api.nvim_create_user_command(name, function(args)
-      local ok, result, err = pcall(action, args)
-      if not ok or err or result == false then
-        vim.notify(
-          "ui-tools: " .. (not ok and tostring(result) or err or "No buffer available for " .. name),
-          vim.log.levels.WARN
-        )
-      end
-    end, opts)
-    created[name] = true
+    created[name] = {
+      function(args)
+        local ok, result, err = pcall(action, args)
+        if not ok or err or result == false then
+          vim.notify(
+            "ui-tools: " .. (not ok and tostring(result) or err or "No buffer available for " .. name),
+            vim.log.levels.WARN
+          )
+        end
+      end,
+      opts,
+    }
   end
   local function number(args)
     local value = args.args == "" and 1 or tonumber(args.args)
@@ -67,6 +65,14 @@ function M.setup(buffers)
     end, { bang = true })
   end
   if next(created) then
+    -- Validate the complete set before creating anything; a conflict must not
+    -- leave a partially registered set of commands behind.
+    for name in pairs(created) do
+      assert(not existing[name], "ui-tools: command already exists: " .. name)
+    end
+    for name, command in pairs(created) do
+      api.nvim_create_user_command(name, command[1], command[2])
+    end
     local installed = api.nvim_get_commands({})
     for name in pairs(created) do
       owned[name] = installed[name]

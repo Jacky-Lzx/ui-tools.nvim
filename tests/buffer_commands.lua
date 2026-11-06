@@ -167,9 +167,14 @@ assert(not ok and err == "Bufferline is disabled")
 t.eq(0, vim.fn.exists(":BufferCloseAllButCurrent"))
 local external = function() end
 api.nvim_create_user_command("BufferNext", external, {})
-ui.setup({ bufferline = true })
-vim.cmd("BufferNext") -- Existing callback is retained.
+local conflict, message = pcall(ui.setup, { bufferline = true })
+assert(not conflict and tostring(message):find("command already exists: BufferNext", 1, true))
 local registered = api.nvim_get_commands({}).BufferNext
+assert(not api.nvim_get_commands({}).BufferClose, "Conflict left partially registered commands")
+api.nvim_del_user_command("BufferNext")
+ui.setup({ bufferline = true })
+api.nvim_create_user_command("BufferNext", external, {})
+registered = api.nvim_get_commands({}).BufferNext
 api.nvim_create_user_command("BufferCloseAllButCurrent", external, {})
 ui.disable()
 local remaining = api.nvim_get_commands({})

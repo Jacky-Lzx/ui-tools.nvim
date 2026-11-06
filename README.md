@@ -22,6 +22,21 @@ require("ui_tools").setup({
 })
 ```
 
+Global entry keys belong to user configuration. Enabling `context_menu` or
+`scroll` does not install right-click or scroll keys by default:
+
+```lua
+vim.keymap.set({ "n", "x", "i" }, "<RightMouse>", function()
+  require("ui_tools").menu({ mouse = true })
+end)
+vim.keymap.set("n", "<C-d>", function()
+  require("ui_tools.scroll").scroll("<C-d>", vim.v.count)
+end)
+```
+
+Legacy presets require explicit `context_menu = { mouse = true }` or
+`scroll = { mappings = true }`. Plugin windows retain local interaction keys.
+
 With lazy.nvim use `main = "ui_tools"` and the same table as `opts`.
 See [examples/lazy.lua](examples/lazy.lua) for a local checkout spec with Zen,
 Zoom, scope dimming, current-line pulse and optional GitTools markers.
@@ -227,7 +242,7 @@ vim.keymap.set("n", "<A-u>", function() buffers.restore() end)
 Left click switches buffers; middle click or the close button closes one. Enable
 native mouse input with `vim.opt.mouse = "a"` to use these. No mappings are
 installed automatically. Enabling the module registers these commands; existing
-commands with the same name are preserved:
+commands with the same name cause a registration error and remain untouched:
 
 | Command | Action |
 | --- | --- |

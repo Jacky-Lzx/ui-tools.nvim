@@ -47,7 +47,7 @@ try:
       vim.wo.number=false; vim.wo.relativenumber=false; vim.wo.signcolumn='no'; vim.wo.foldcolumn='0'
       vim.api.nvim_buf_set_lines(0,0,-1,false,{'alpha beta gamma','second line','third line'})
       source=vim.api.nvim_get_current_win(); source_buf=vim.api.nvim_get_current_buf()
-      require('ui_tools').setup({context_menu=true})
+      require('ui_tools').setup({context_menu={mouse=true}})
       menu=require('ui_tools.context_menu')
     """)
     screen()
@@ -150,7 +150,7 @@ try:
 
     # Async insertion retains selection by item ID; stale handles do nothing.
     lua("""
-      menu.setup({builtin=false,lsp=false})
+      menu.setup({mouse=true,builtin=false,lsp=false})
       remove=menu.register('async',function(ctx,sink)
         pending=sink
         return {{id='a',label='First',action=function() picked='a' end},

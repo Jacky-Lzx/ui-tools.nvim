@@ -42,7 +42,7 @@ try:
       vim.api.nvim_buf_set_lines(0,0,-1,false,{'no target here','symbol target'})
       source=vim.api.nvim_get_current_win(); source_buf=vim.api.nvim_get_current_buf()
       vim.api.nvim_buf_set_name(source_buf,vim.fn.getcwd()..'/lsp-menu-fixture.lua')
-      require('ui_tools').setup({context_menu=true})
+      require('ui_tools').setup({context_menu={mouse=true}})
       menu=require('ui_tools.context_menu')
       require('ui_tools.integrations.context_lsp').setup({
         actions={definition=function(ctx) invoked={win=vim.api.nvim_get_current_win(),cursor=ctx.cursor} end},

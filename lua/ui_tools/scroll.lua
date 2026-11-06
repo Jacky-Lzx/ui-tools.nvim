@@ -129,7 +129,7 @@ function M.setup(opts)
   M.disable()
   M.options, M.enabled = opts or {}, true
   group = api.nvim_create_augroup("UiToolsScroll", { clear = true })
-  for _, key in ipairs(keys) do
+  for _, key in ipairs(M.options.mappings == true and keys or {}) do
     -- Existing mappings retain ownership. Buffer-local mappings also win over
     -- these optional global defaults, just as they do over native keys.
     if not next(global_mapping(key)) then

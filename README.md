@@ -932,3 +932,9 @@ or commands. Repeating setup must not accumulate automatic registrations.
 reapplies them. `dispose()` releases them and forgets configuration. Both respect
 a modified focus buffer that cannot be closed, returning `false`; no forced buffer
 deletion occurs. Existing module validation runs before replacing the live UI.
+
+## Read-only state
+
+`get_state(name)` returns an independent live `{ enabled }` snapshot, or `nil`
+for an unloaded feature. Focus also reports `mode`, `win`, `source` and `dimmed`.
+Reads never load feature modules or prepare windows, timers or decorations.

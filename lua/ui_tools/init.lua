@@ -136,6 +136,25 @@ function M.disable()
   require("ui_tools.theme").unbind("core")
 end
 
+-- Read live state without requiring feature modules or preparing resources.
+function M.get_state(name)
+  assert(vim.tbl_contains(modules, name), "Unknown UI module: " .. tostring(name))
+  local module = package.loaded["ui_tools." .. name]
+  if not module then
+    return nil
+  end
+  local render = package.loaded["ui_tools.render"]
+  local result = { enabled = module.enabled == true or (render ~= nil and render.sources[name] ~= nil) }
+  if name == "focus" then
+    local focus = module.state()
+    result.mode = focus and focus.mode
+    result.win = focus and focus.win
+    result.source = focus and focus.source
+    result.dimmed = module.dimmed == true
+  end
+  return result
+end
+
 function M.toggle(name)
   assert(vim.tbl_contains(modules, name), "Unknown UI module: " .. tostring(name))
   local module = require("ui_tools." .. name)

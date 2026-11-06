@@ -504,15 +504,24 @@ function M.state()
   return s and { win = s.win, buf = s.buf, context = s.ctx, items = s.items, selected = s.index } or nil
 end
 
-function M.setup(opts)
-  M.disable()
-  options = vim.tbl_extend("force", {}, opts or {})
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "context_menu options must be a table")
+  opts = vim.deepcopy(opts or {})
+  local candidate = vim.tbl_extend("force", {}, opts or {})
   for _, key in ipairs({ "min_width", "max_width", "max_height" }) do
     assert(
-      options[key] == nil or type(options[key]) == "number" and options[key] >= 1 and options[key] % 1 == 0,
+      candidate[key] == nil
+        or type(candidate[key]) == "number" and candidate[key] >= 1 and candidate[key] % 1 == 0,
       key .. " must be a positive integer"
     )
   end
+  return candidate
+end
+
+function M.setup(opts)
+  local resolved = M.resolve(opts)
+  M.disable()
+  options = resolved
   highlights()
   M.enabled = true
   if options.mouse == true then

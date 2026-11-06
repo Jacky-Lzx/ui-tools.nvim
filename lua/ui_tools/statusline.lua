@@ -793,8 +793,9 @@ local function normalize(layout)
   return layout
 end
 
-function M.setup(opts)
-  M.disable()
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "statusline options must be a table")
+  opts = vim.deepcopy(opts or {})
   opts = opts or {}
   local config = vim.tbl_deep_extend("force", {
     refresh = 30,
@@ -827,9 +828,17 @@ function M.setup(opts)
     config.section_separator[side] = bar.text(config.section_separator[side])
     config.section_width[side] = bar.width(config.section_separator[side])
   end
-  custom = bar.validate_profiles(config.filetypes)
+  local custom = bar.validate_profiles(config.filetypes)
   normalize(config.sections)
   normalize(config.inactive_sections)
+  return config, custom
+end
+
+function M.setup(opts)
+  local resolved, derived = M.resolve(opts)
+  M.disable()
+  local config = resolved
+  custom = derived
   M.options, M.enabled, all_dirty = config, true, true
   queue = bar.scheduler(config.refresh, update)
   require("ui_tools.theme").bind("statusline", function(c)

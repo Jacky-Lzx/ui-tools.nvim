@@ -277,9 +277,10 @@ function M.preview()
   return buf, win
 end
 
-function M.setup(opts)
-  M.disable()
-  M.options = vim.tbl_deep_extend("force", {
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "fold options must be a table")
+  opts = vim.deepcopy(opts or {})
+  local config = vim.tbl_deep_extend("force", {
     method = "auto",
     level = "open",
     text = true,
@@ -289,34 +290,37 @@ function M.setup(opts)
     force = false,
     preview = { border = "rounded", max_width = 100, max_height = 20, max_lines = 200 },
   }, opts or {})
-  assert(M.options.method == "auto" or M.options.method == "indent", "fold.method must be auto or indent")
+  assert(config.method == "auto" or config.method == "indent", "fold.method must be auto or indent")
   assert(
-    M.options.level == "open"
-      or type(M.options.level) == "number" and M.options.level >= 0 and M.options.level % 1 == 0,
+    config.level == "open" or type(config.level) == "number" and config.level >= 0 and config.level % 1 == 0,
     "fold.level must be open or a nonnegative integer"
   )
   assert(
-    type(M.options.text) == "boolean" and type(M.options.force) == "boolean",
+    type(config.text) == "boolean" and type(config.force) == "boolean",
     "fold.text/force must be boolean"
   )
-  assert(
-    type(M.options.suffix) == "string" and pcall(string.format, M.options.suffix, 1),
-    "Invalid fold.suffix"
-  )
+  assert(type(config.suffix) == "string" and pcall(string.format, config.suffix, 1), "Invalid fold.suffix")
   for _, key in ipairs({ "max_width", "max_height", "max_lines" }) do
-    local value = M.options.preview[key]
+    local value = config.preview[key]
     assert(
       type(value) == "number" and value >= 1 and value % 1 == 0,
       "fold.preview." .. key .. " must be a positive integer"
     )
   end
-  for key, value in pairs(M.options.fillchars) do
+  for key, value in pairs(config.fillchars) do
     assert(
       vim.tbl_contains({ "fold", "foldopen", "foldclose", "foldsep" }, key),
       "Unknown fold fill character: " .. key
     )
     require("ui_tools.util").cell(value, "fold.fillchars." .. key)
   end
+  return config
+end
+
+function M.setup(opts)
+  local resolved = M.resolve(opts)
+  M.disable()
+  M.options = resolved
   M.enabled = true
   local group = require("ui_tools.util").group("Fold")
   api.nvim_create_autocmd({ "FileType", "BufWinEnter", "WinEnter" }, {

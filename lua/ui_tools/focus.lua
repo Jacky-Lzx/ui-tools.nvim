@@ -199,13 +199,25 @@ function M.dim(value)
   return M.dimmed
 end
 
-function M.setup(opts)
-  M.disable()
-  M.options = vim.tbl_deep_extend(
+function M.resolve(opts)
+  local config = vim.tbl_deep_extend(
     "force",
     { width = 100, height = 0.9, backdrop = 60, dim = true, max_scan = 400 },
     opts or {}
   )
+  assert(type(config.width) == "number" and config.width > 0, "focus.width must be positive")
+  assert(type(config.height) == "number" and config.height > 0, "focus.height must be positive")
+  assert(
+    type(config.backdrop) == "number" and config.backdrop >= 0 and config.backdrop <= 100,
+    "focus.backdrop must be 0..100"
+  )
+  return config
+end
+
+function M.setup(opts)
+  local config = M.resolve(opts)
+  assert(M.disable() ~= false, "Cannot replace a blocked focus session")
+  M.options = config
   M.enabled = true
   util.hl({ UiToolsDim = "Comment", UiToolsBackdrop = "NormalFloat" })
   local group = util.group("Focus")

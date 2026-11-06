@@ -512,8 +512,9 @@ function M.close_click(buf, _, button)
   end
 end
 
-function M.setup(opts)
-  M.disable()
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "bufferline options must be a table")
+  opts = vim.deepcopy(opts or {})
   opts = vim.tbl_deep_extend("force", {
     refresh = 30,
     auto_hide = 1,
@@ -540,6 +541,13 @@ function M.setup(opts)
     type(opts.max_name_length) == "number" and opts.max_name_length >= 1,
     "bufferline.max_name_length must be positive"
   )
+  return opts
+end
+
+function M.setup(opts)
+  local resolved = M.resolve(opts)
+  M.disable()
+  opts = resolved
   M.options = opts
   if vim.o.tabline ~= "" and not opts.force then
     return false

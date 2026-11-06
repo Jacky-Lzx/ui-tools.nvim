@@ -3,6 +3,17 @@
 local util = require("ui_tools.util")
 local M = {}
 
+function M.validate(opts, name)
+  assert(
+    type(opts.refresh) == "number" and opts.refresh >= 0 and opts.refresh % 1 == 0,
+    name .. ".refresh must be a nonnegative integer"
+  )
+  assert(
+    type(opts.max_line_length) == "number" and opts.max_line_length > 0,
+    name .. ".max_line_length must be positive"
+  )
+end
+
 function M.new(name)
   local self = { ns = vim.api.nvim_create_namespace("UiTools" .. name), attached = {}, marked = {} }
   local generation, pending = 0, false
@@ -104,9 +115,8 @@ function M.new(name)
   end
 
   function self.start(opts, paint)
+    M.validate(opts, name)
     self.disable()
-    assert(opts.refresh >= 0 and opts.refresh % 1 == 0, name .. ".refresh must be a nonnegative integer")
-    assert(opts.max_line_length > 0, name .. ".max_line_length must be positive")
     self.options, self.paint, self.enabled = opts, paint, opts.enabled ~= false
     local group = util.group(name)
     vim.api.nvim_create_autocmd({

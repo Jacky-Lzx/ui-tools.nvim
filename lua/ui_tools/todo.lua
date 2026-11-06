@@ -113,7 +113,9 @@ local function refresh_column()
   end
 end
 
-function M.setup(opts)
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "todo options must be a table")
+  opts = vim.deepcopy(opts or {})
   opts = vim.tbl_deep_extend("force", {
     enabled = true,
     keywords = defaults,
@@ -128,7 +130,7 @@ function M.setup(opts)
     max_line_length = 4096,
   }, opts or {})
   assert(vim.tbl_contains({ "badge", "foreground" }, opts.style), "Invalid todo.style")
-  keywords = {}
+  local lookup = {}
   for name, item in pairs(opts.keywords) do
     assert(name:match("^[A-Z][A-Z0-9_]*$"), "TODO keywords must be uppercase identifiers")
     if item then
@@ -137,7 +139,7 @@ function M.setup(opts)
         "TODO keywords need hl and rank"
       )
       util.cell(item.icon, "todo.keywords." .. name .. ".icon")
-      keywords[name] = name
+      lookup[name] = name
     end
   end
   for name, item in pairs(opts.keywords) do
@@ -145,12 +147,21 @@ function M.setup(opts)
       for _, alt in ipairs(item.alt or {}) do
         assert(alt:match("^[A-Z][A-Z0-9_]*$"), "TODO aliases must be uppercase identifiers")
         if opts.keywords[alt] == nil then
-          assert(not keywords[alt], "Duplicate TODO alias: " .. alt)
-          keywords[alt] = name
+          assert(not lookup[alt], "Duplicate TODO alias: " .. alt)
+          lookup[alt] = name
         end
       end
     end
   end
+  require("ui_tools.annotations").validate(opts, "todo")
+  return opts, lookup
+end
+
+function M.setup(opts)
+  local resolved, derived = M.resolve(opts)
+  M.disable()
+  opts = resolved
+  keywords = derived
   -- Native signs must be visible to ui-tools' cached statuscolumn as well.
   M.on_refresh = refresh_column
   M.start(opts, function(buf, row, line, win)

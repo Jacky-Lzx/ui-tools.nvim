@@ -2,7 +2,9 @@ local M = {}
 local util = require("ui_tools.util")
 local render = require("ui_tools.render")
 
-function M.setup(opts)
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "guide options must be a table")
+  opts = vim.deepcopy(opts or {})
   opts = vim.tbl_deep_extend("force", { columns = { 121 }, char = "│" }, opts or {})
   util.cell(opts.char, "guide.char")
   for _, column in ipairs(opts.columns) do
@@ -11,6 +13,13 @@ function M.setup(opts)
       "guide columns must be positive integers"
     )
   end
+  return opts
+end
+
+function M.setup(opts)
+  local resolved = M.resolve(opts)
+  M.disable()
+  opts = resolved
   M.options = opts
   util.hl({ UiToolsGuide = "NonText" })
   render.register("guide", function(ctx)

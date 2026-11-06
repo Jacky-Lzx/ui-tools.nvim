@@ -921,3 +921,14 @@ Scrolling settles at the native destination on disable/Insert mode and cancels
 when the buffer/window changes. Burst input accumulates toward the destination.
 Mouse scrolling, wrapped, diff, special and large-file buffers, closed folds and jumps over 1000
 lines retain native immediate scrolling.
+
+## Setup contract
+
+`setup(nil)` uses defaults. Configuration must be a table; caller-owned tables
+are copied before use. Invalid configuration types do not replace live handlers
+or commands. Repeating setup must not accumulate automatic registrations.
+
+`disable()` temporarily releases UI modules and retains setup options; `enable()`
+reapplies them. `dispose()` releases them and forgets configuration. Both respect
+a modified focus buffer that cannot be closed, returning `false`; no forced buffer
+deletion occurs. Existing module validation runs before replacing the live UI.

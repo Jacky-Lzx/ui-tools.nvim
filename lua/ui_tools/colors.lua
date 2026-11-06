@@ -3,7 +3,9 @@ local color = require("ui_tools.color")
 local util = require("ui_tools.util")
 local groups = {}
 
-function M.setup(opts)
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "colors options must be a table")
+  opts = vim.deepcopy(opts or {})
   opts = vim.tbl_deep_extend("force", {
     enabled = true,
     style = "inline",
@@ -28,6 +30,14 @@ function M.setup(opts)
     custom[name:lower()] = value
   end
   opts.custom = custom
+  require("ui_tools.annotations").validate(opts, "colors")
+  return opts
+end
+
+function M.setup(opts)
+  local resolved = M.resolve(opts)
+  M.disable()
+  opts = resolved
   groups = {}
   M.start(opts, function(buf, row, line)
     local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })

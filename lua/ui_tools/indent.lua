@@ -3,7 +3,9 @@ local util = require("ui_tools.util")
 local render = require("ui_tools.render")
 local scope = require("ui_tools.scope")
 
-function M.setup(opts)
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "indent options must be a table")
+  opts = vim.deepcopy(opts or {})
   opts = vim.tbl_deep_extend("force", {
     enabled = true,
     char = "│",
@@ -14,6 +16,13 @@ function M.setup(opts)
   }, opts or {})
   util.cell(opts.char, "indent.char")
   assert(opts.max_scan >= 1 and opts.max_scan % 1 == 0, "indent.max_scan must be a positive integer")
+  return opts
+end
+
+function M.setup(opts)
+  local resolved = M.resolve(opts)
+  M.disable()
+  opts = resolved
   M.options = opts
   util.hl({ UiToolsIndent = "Whitespace", UiToolsScope = "Special" })
   local group = util.group("Indent")

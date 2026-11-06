@@ -273,8 +273,9 @@ function M.register(name, callback)
   end
 end
 
-function M.setup(opts)
-  M.disable()
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "scrollbar options must be a table")
+  opts = vim.deepcopy(opts or {})
   opts = vim.tbl_deep_extend("force", {
     handle = "┃",
     mark = "•",
@@ -303,6 +304,13 @@ function M.setup(opts)
       "scrollbar." .. field .. " must be nonnegative"
     )
   end
+  return opts
+end
+
+function M.setup(opts)
+  local resolved = M.resolve(opts)
+  M.disable()
+  opts = resolved
   M.options, M.enabled = opts, true
   util.hl({
     UiToolsScrollbar = "NormalFloat",

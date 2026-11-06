@@ -251,9 +251,10 @@ function M.refresh()
   update()
 end
 
-function M.setup(opts)
-  M.disable()
-  M.options = vim.tbl_deep_extend("force", {
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "winbar options must be a table")
+  opts = vim.deepcopy(opts or {})
+  local config = vim.tbl_deep_extend("force", {
     refresh = 30,
     force = false,
     filename = true,
@@ -265,27 +266,33 @@ function M.setup(opts)
     lsp = true,
     exclude = { "ui_tools_dashboard" },
   }, opts or {})
-  assert(type(M.options.refresh) == "number" and M.options.refresh >= 0, "winbar.refresh must be nonnegative")
-  assert(type(M.options.force) == "boolean", "winbar.force must be boolean")
-  assert(type(M.options.filename) == "boolean", "winbar.filename must be boolean")
-  assert(type(M.options.lsp) == "boolean", "winbar.lsp must be boolean")
-  assert(type(M.options.icons) == "boolean", "winbar.icons must be boolean")
+  assert(type(config.refresh) == "number" and config.refresh >= 0, "winbar.refresh must be nonnegative")
+  assert(type(config.force) == "boolean", "winbar.force must be boolean")
+  assert(type(config.filename) == "boolean", "winbar.filename must be boolean")
+  assert(type(config.lsp) == "boolean", "winbar.lsp must be boolean")
+  assert(type(config.icons) == "boolean", "winbar.icons must be boolean")
   assert(
-    type(M.options.indicator) == "string" and type(M.options.separator) == "string",
+    type(config.indicator) == "string" and type(config.separator) == "string",
     "winbar markers must be strings"
   )
-  M.options.indicator, M.options.separator = bar.text(M.options.indicator), bar.text(M.options.separator)
+  config.indicator, config.separator = bar.text(config.indicator), bar.text(config.separator)
   assert(
-    type(M.options.filename_width) == "number"
-      and M.options.filename_width > 0
-      and M.options.filename_width <= 1,
+    type(config.filename_width) == "number" and config.filename_width > 0 and config.filename_width <= 1,
     "winbar.filename_width must be in (0, 1]"
   )
   assert(
-    M.options.breadcrumbs == nil or type(M.options.breadcrumbs) == "function",
+    config.breadcrumbs == nil or type(config.breadcrumbs) == "function",
     "winbar.breadcrumbs must be a function"
   )
-  local custom = bar.validate_profiles(M.options.filetypes)
+  local custom = bar.validate_profiles(config.filetypes)
+  return config, custom
+end
+
+function M.setup(opts)
+  local resolved, derived = M.resolve(opts)
+  M.disable()
+  M.options = resolved
+  local custom = derived
   M.enabled = true
   queue = bar.scheduler(M.options.refresh, update)
   require("ui_tools.theme").bind("winbar", function(c)

@@ -334,9 +334,25 @@ local function autostart()
   open(nil, true)
 end
 
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "dashboard options must be a table")
+  opts = vim.tbl_deep_extend("force", vim.deepcopy(defaults), vim.deepcopy(opts or {}))
+  assert(
+    opts.layout == "vertical" or opts.layout == "horizontal",
+    'dashboard layout must be "vertical" or "horizontal"'
+  )
+  assert(type(opts.width) == "number" and opts.width >= 1, "dashboard width must be positive")
+  assert(
+    type(opts.gap) == "number" and opts.gap >= 0 and opts.gap % 1 == 0,
+    "dashboard gap must be a nonnegative integer"
+  )
+  return opts
+end
+
 function M.setup(opts)
+  local config = M.resolve(opts)
   M.disable()
-  M.options = vim.tbl_deep_extend("force", defaults, opts or {})
+  M.options = config
   M.enabled, M.attempted, M.stdin = true, false, false
   local group = require("ui_tools.util").group("Dashboard")
   api.nvim_create_autocmd("StdinReadPre", {

@@ -444,8 +444,9 @@ function M.click(column, _, button)
   schedule()
 end
 
-function M.setup(opts)
-  M.disable()
+function M.resolve(opts)
+  assert(opts == nil or type(opts) == "table", "statuscolumn options must be a table")
+  opts = vim.deepcopy(opts or {})
   opts = vim.tbl_deep_extend("force", {
     layout = { { "diagnostic", "sign", "mark" }, "number", { "fold", "git" } },
     slot_width = 1,
@@ -465,7 +466,7 @@ function M.setup(opts)
     type(opts.slot_width) == "number" and opts.slot_width >= 1 and opts.slot_width % 1 == 0,
     "statuscolumn.slot_width must be a positive integer"
   )
-  has_diagnostic_slot = false
+  local has_diagnostic_slot = false
   for _, entry in ipairs(opts.layout) do
     local choices = kinds(entry)
     assert(#choices > 0, "statuscolumn groups must not be empty")
@@ -490,6 +491,14 @@ function M.setup(opts)
       and opts.folds.columns % 1 == 0,
     "folds.columns must be an integer from 1 to 9"
   )
+  return opts, has_diagnostic_slot
+end
+
+function M.setup(opts)
+  local resolved, derived = M.resolve(opts)
+  M.disable()
+  opts = resolved
+  has_diagnostic_slot = derived
   if opts.folds.levels then
     require("ui_tools.fold_info").setup()
   end

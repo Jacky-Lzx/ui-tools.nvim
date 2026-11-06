@@ -75,7 +75,21 @@ end
 
 function M.setup(opts)
   assert(vim.fn.has("nvim-0.11") == 1, "ui-tools.nvim requires Neovim 0.11+")
-  opts = opts or {}
+  assert(opts == nil or type(opts) == "table", "ui-tools: setup expects a table")
+  opts = vim.deepcopy(opts or {})
+  for _, name in ipairs(modules) do
+    local value = opts[name]
+    assert(
+      value == nil or type(value) == "boolean" or type(value) == "table",
+      name .. " must be a boolean or table"
+    )
+    if value == true or type(value) == "table" and value.enabled ~= false then
+      local module = require("ui_tools." .. name)
+      if module.resolve then
+        module.resolve(type(value) == "table" and value or {})
+      end
+    end
+  end
   assert(
     M.disable() ~= false,
     "ui-tools: cannot replace configuration while a modified focus buffer is blocked"
@@ -90,10 +104,27 @@ function M.setup(opts)
   end
 end
 
+function M.enable()
+  return M.setup(M.options)
+end
+
+function M.dispose()
+  if M.disable() == false then
+    return false
+  end
+  M.options = nil
+  return true
+end
+
 function M.disable()
+  -- A blocked focus buffer must be detected before changing the other modules.
+  local focus = package.loaded["ui_tools.focus"]
+  if focus and focus.disable() == false then
+    return false
+  end
   for _, name in ipairs(modules) do
     local module = package.loaded["ui_tools." .. name]
-    if module then
+    if module and name ~= "focus" then
       if module.disable() == false then
         return false
       end

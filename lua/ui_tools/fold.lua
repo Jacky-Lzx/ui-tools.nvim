@@ -273,7 +273,12 @@ function M.preview()
     close_events = { "CursorMoved", "CursorMovedI", "InsertEnter", "BufHidden" },
   })
   previews[win] = buf
-  vim.keymap.set("n", "<Esc>", "<Cmd>close<CR>", { buffer = buf, silent = true, nowait = true })
+  vim.keymap.set(
+    "n",
+    "<Esc>",
+    "<Cmd>close<CR>",
+    { buffer = buf, silent = true, nowait = true, desc = "Close fold preview" }
+  )
   return buf, win
 end
 

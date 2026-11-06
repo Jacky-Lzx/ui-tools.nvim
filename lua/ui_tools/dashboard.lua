@@ -136,7 +136,7 @@ local function render(s)
       s.items[#s.items + 1] = item
       vim.keymap.set("n", item.key, function()
         run(s, item)
-      end, { buffer = s.buf, nowait = true, silent = true, desc = item.desc })
+      end, { buffer = s.buf, nowait = true, silent = true, desc = item.desc or "Run dashboard action" })
       s.mapped[#s.mapped + 1] = item.key
     end
   end
@@ -290,16 +290,16 @@ local function open(opts, startup)
   for _, key in ipairs({ "j", "<Down>", "<Tab>" }) do
     vim.keymap.set("n", key, function()
       select_item(s, s.selected + 1)
-    end, { buffer = s.buf, silent = true })
+    end, { buffer = s.buf, silent = true, desc = "Next dashboard action" })
   end
   for _, key in ipairs({ "k", "<Up>", "<S-Tab>" }) do
     vim.keymap.set("n", key, function()
       select_item(s, s.selected - 1)
-    end, { buffer = s.buf, silent = true })
+    end, { buffer = s.buf, silent = true, desc = "Previous dashboard action" })
   end
   vim.keymap.set("n", "<CR>", function()
     run(s, s.items[s.selected])
-  end, { buffer = s.buf, silent = true })
+  end, { buffer = s.buf, silent = true, desc = "Run selected dashboard action" })
   vim.keymap.set("n", "<Esc>", "<Cmd>qa<CR>", { buffer = s.buf, silent = true, desc = "Quit Neovim" })
   return s.buf
 end

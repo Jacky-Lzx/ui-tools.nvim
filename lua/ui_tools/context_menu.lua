@@ -389,27 +389,27 @@ function M.open(opts)
     collect(s, source)
   end
   draw(s)
-  local function map(keys, callback)
-    vim.keymap.set("n", keys, callback, { buffer = s.buf, nowait = true, silent = true })
+  local function map(keys, callback, desc)
+    vim.keymap.set("n", keys, callback, { buffer = s.buf, nowait = true, silent = true, desc = desc })
   end
   for _, key in ipairs({ "j", "<Down>", "<Tab>", "<ScrollWheelDown>" }) do
     map(key, function()
       move(s, 1)
-    end)
+    end, "Next context menu item")
   end
   for _, key in ipairs({ "k", "<Up>", "<S-Tab>", "<ScrollWheelUp>" }) do
     map(key, function()
       move(s, -1)
-    end)
+    end, "Previous context menu item")
   end
   map("<CR>", function()
     choose(s)
-  end)
+  end, "Run selected context menu action")
   map("<Space>", function()
     choose(s)
-  end)
+  end, "Run selected context menu action")
   for _, key in ipairs({ "<Esc>", "q", "<C-c>" }) do
-    map(key, M.close)
+    map(key, M.close, "Close context menu")
   end
   map("<LeftMouse>", function()
     local click = vim.fn.getmousepos()
@@ -423,11 +423,11 @@ function M.open(opts)
       close(s, false)
       api.nvim_input_mouse("left", "press", "", 0, click.screenrow - 1, click.screencol - 1)
     end
-  end)
+  end, "Run context menu action under mouse")
   for _, key in ipairs(mouse_keys) do
     map(key, function()
       M.open({ mouse = true })
-    end)
+    end, "Open context menu at mouse")
   end
   -- Consume editing keys: this scratch buffer is a menu, not an editor.
   for _, key in ipairs({
@@ -453,7 +453,7 @@ function M.open(opts)
     "/",
     "?",
   }) do
-    map(key, "<Nop>")
+    map(key, "<Nop>", "Disabled in context menu")
   end
   s.group = api.nvim_create_augroup("UiToolsMenuSession", { clear = true })
   api.nvim_create_autocmd("ColorScheme", { group = s.group, callback = highlights })

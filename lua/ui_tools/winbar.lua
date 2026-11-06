@@ -289,7 +289,10 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local resolved, derived = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(resolved, derived)
   M.disable()
   M.options = resolved
   local custom = derived

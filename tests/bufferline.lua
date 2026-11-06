@@ -127,6 +127,49 @@ ui.toggle("bufferline")
 assert(line.enabled)
 ui.disable()
 
+-- Auto-hidden bars retain navigation state without resolving invisible icons.
+for _, buf in ipairs(api.nvim_list_bufs()) do
+  vim.bo[buf].buflisted = false
+end
+local single = named("hidden.lua")
+api.nvim_set_current_buf(single)
+local icon_api = require("ui_tools.icons")
+local original_icon, calls, policy = icon_api.get, 0, "OLD"
+icon_api.get = function(category)
+  calls = calls + 1
+  return category == "file" and policy or "", "Normal"
+end
+line.setup({ auto_hide = 1 })
+t.eq(0, vim.o.showtabline)
+t.eq("", line.render())
+t.eq(0, calls)
+t.eq(single, line.items()[1].buf)
+assert(line.go(1))
+line.pin(single)
+policy = "NEW"
+api.nvim_exec_autocmds("User", { pattern = "ThemeToolsIconsChanged" })
+line.refresh()
+t.eq(0, calls)
+local second = named("revealed.lua")
+assert(vim.wait(200, function()
+  return vim.o.showtabline == 2
+end))
+assert(text():find("NEW", 1, true) and not text():find("OLD", 1, true), text())
+t.eq(single, line.items()[1].buf)
+assert(line.items()[1].pinned)
+vim.bo[second].buflisted = false
+line.refresh()
+t.eq(0, vim.o.showtabline)
+t.eq("", line.render())
+-- An external owner can explicitly reveal a bar below our auto-hide threshold.
+vim.o.showtabline = 2
+line.refresh()
+assert(text():find("hidden.lua", 1, true), text())
+t.eq(2, vim.o.showtabline)
+line.disable()
+t.eq(2, vim.o.showtabline)
+icon_api.get = original_icon
+
 for width = 0, 20 do
   assert(bar.width(bar.truncate("中文á🙂%foo", width)) <= width)
 end

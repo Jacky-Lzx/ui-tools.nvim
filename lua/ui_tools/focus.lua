@@ -215,7 +215,10 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local config = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(config)
   assert(M.disable() ~= false, "Cannot replace a blocked focus session")
   M.options = config
   M.enabled = true

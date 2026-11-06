@@ -35,9 +35,12 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local resolved = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(resolved)
   M.disable()
-  opts = resolved
+  local opts = resolved
   groups = {}
   M.start(opts, function(buf, row, line)
     local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })

@@ -350,7 +350,10 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local config = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(config)
   M.disable()
   M.options = config
   M.enabled, M.attempted, M.stdin = true, false, false

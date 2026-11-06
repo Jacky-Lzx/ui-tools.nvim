@@ -308,9 +308,12 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local resolved = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(resolved)
   M.disable()
-  opts = resolved
+  local opts = resolved
   M.options, M.enabled = opts, true
   util.hl({
     UiToolsScrollbar = "NormalFloat",

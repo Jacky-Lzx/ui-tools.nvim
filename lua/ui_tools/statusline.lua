@@ -453,8 +453,8 @@ local function compile(layout, data, ctx)
         if spec.cond and not spec.cond(ctx) then
           return
         end
-        item.icon = component_icon(kind, data, spec)
         if dynamic[kind] and not spec.fmt then
+          item.icon = component_icon(kind, data, spec)
           item.dynamic = true
         else
           local text, color, spans
@@ -468,6 +468,9 @@ local function compile(layout, data, ctx)
             spans = nil
           end
           text = bar.text(text)
+          -- Empty components have no visible icon. Avoid querying a provider
+          -- (and loading its filetype database) for text we will discard.
+          item.icon = text ~= "" and component_icon(kind, data, spec) or ""
           text = text ~= "" and (item.icon .. text) or ""
           item.full_text = text
           if spec.max_width then
@@ -835,7 +838,10 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local resolved, derived = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(resolved, derived)
   M.disable()
   local config = resolved
   custom = derived

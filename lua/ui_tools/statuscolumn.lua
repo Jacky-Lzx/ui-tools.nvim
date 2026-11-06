@@ -495,9 +495,12 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local resolved, derived = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(resolved, derived)
   M.disable()
-  opts = resolved
+  local opts = resolved
   has_diagnostic_slot = derived
   if opts.folds.levels then
     require("ui_tools.fold_info").setup()

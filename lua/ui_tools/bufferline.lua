@@ -119,6 +119,18 @@ local function update()
     collect()
     icons_dirty = true
   end
+  -- Keep navigation metadata current, but build cells/icons only for a visible
+  -- bar. Leave icons_dirty set so revealing it resolves the latest icon policy.
+  if #order <= M.options.auto_hide and (vim.o.showtabline == shown or vim.o.showtabline == 0) then
+    output = ""
+    if vim.o.showtabline == shown and shown ~= 0 then
+      shown = 0
+      bar.preserve_views(function()
+        vim.o.showtabline = shown
+      end)
+    end
+    return
+  end
   local current, visible = api.nvim_get_current_buf(), {}
   for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
     visible[api.nvim_win_get_buf(win)] = true
@@ -545,9 +557,12 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local resolved = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(resolved)
   M.disable()
-  opts = resolved
+  local opts = resolved
   M.options = opts
   if vim.o.tabline ~= "" and not opts.force then
     return false

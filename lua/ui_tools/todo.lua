@@ -158,9 +158,12 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local resolved, derived = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(resolved, derived)
   M.disable()
-  opts = resolved
+  local opts = resolved
   keywords = derived
   -- Native signs must be visible to ui-tools' cached statuscolumn as well.
   M.on_refresh = refresh_column

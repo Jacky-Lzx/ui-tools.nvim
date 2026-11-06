@@ -352,4 +352,41 @@ check_directories()
 vim.cmd("tabonly!")
 settle()
 line.disable()
+-- Invisible components must not query an optional provider. Provider failures
+-- for empty filetypes or formatter-hidden filenames must not poison the bar.
+local icon_api = require("ui_tools.icons")
+local original_icon = icon_api.get
+icon_api.get = function()
+  error("invisible component queried its icon provider")
+end
+vim.bo.filetype = ""
+ui.setup({
+  statusline = {
+    sections = {
+      a = {},
+      b = {},
+      c = { {
+        "filename",
+        fmt = function()
+          return ""
+        end,
+      } },
+      x = {},
+      y = { "filetype" },
+      z = {},
+    },
+    inactive_sections = { a = {}, b = {}, c = {}, x = {}, y = {}, z = {} },
+  },
+})
+settle()
+t.eq({}, line.errors)
+-- Metadata changes must still resolve an icon when the component becomes visible.
+icon_api.get = function(category, name)
+  return category == "filetype" and name == "lua" and "VISIBLE" or "", "Normal"
+end
+vim.bo.filetype = "lua"
+settle()
+assert(text():find("VISIBLE lua", 1, true), text())
+icon_api.get = original_icon
+ui.disable()
 print("statusline providers, caches, window context, ownership, callbacks and lifecycle passed")

@@ -17,9 +17,12 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local resolved = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(resolved)
   M.disable()
-  opts = resolved
+  local opts = resolved
   M.options = opts
   util.hl({ UiToolsGuide = "NonText" })
   render.register("guide", function(ctx)

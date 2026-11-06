@@ -519,7 +519,10 @@ function M.resolve(opts)
 end
 
 function M.setup(opts)
-  local resolved = M.resolve(opts)
+  return M._setup(M.resolve(opts))
+end
+
+function M._setup(resolved)
   M.disable()
   options = resolved
   highlights()

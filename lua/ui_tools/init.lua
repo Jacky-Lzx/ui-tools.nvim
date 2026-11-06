@@ -76,7 +76,8 @@ end
 function M.setup(opts)
   assert(vim.fn.has("nvim-0.11") == 1, "ui-tools.nvim requires Neovim 0.11+")
   assert(opts == nil or type(opts) == "table", "ui-tools: setup expects a table")
-  opts = vim.deepcopy(opts or {})
+  opts = opts or {}
+  local prepared = {}
   for _, name in ipairs(modules) do
     local value = opts[name]
     assert(
@@ -85,9 +86,10 @@ function M.setup(opts)
     )
     if value == true or type(value) == "table" and value.enabled ~= false then
       local module = require("ui_tools." .. name)
-      if module.resolve then
-        module.resolve(type(value) == "table" and value or {})
-      end
+      local config = type(value) == "table" and value or {}
+      -- Validate every module before tearing down the live configuration. Keep
+      -- the isolated results (including derived data) for initialization below.
+      prepared[name] = module.resolve and { module.resolve(config) } or { vim.deepcopy(config) }
     end
   end
   assert(
@@ -97,9 +99,10 @@ function M.setup(opts)
   require("ui_tools.theme").bind("core", highlights)
   M.options = vim.deepcopy(opts)
   for _, name in ipairs(modules) do
-    local config = opts[name]
-    if config == true or type(config) == "table" and config.enabled ~= false then
-      require("ui_tools." .. name).setup(type(config) == "table" and config or {})
+    if prepared[name] then
+      local module = require("ui_tools." .. name)
+      local setup = module._setup or module.setup
+      setup(unpack(prepared[name]))
     end
   end
 end

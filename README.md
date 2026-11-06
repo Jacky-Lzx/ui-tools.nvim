@@ -742,8 +742,9 @@ statuscolumn = {
 }
 ```
 
-Sign snapshots refresh on diagnostics, edits, window events and `GitToolsUpdate`,
-coalesced with `refresh = 30` milliseconds. Call
+Sign snapshots refresh synchronously on scrolling, so newly visible rows retain
+their signs and Git number colors from the first frame. Diagnostics, edits, other
+window events and `GitToolsUpdate` are coalesced with `refresh = 30` milliseconds. Call
 `require("ui_tools.statuscolumn").refresh()` after other sign/mark updates.
 
 Existing nonempty status columns are preserved unless `force = true`. Disable

@@ -504,10 +504,12 @@ function M.setup(opts)
   M.options, M.enabled = opts, true
   local group = util.group("Statuscolumn")
   vim.api.nvim_create_autocmd("SafeState", { group = group, callback = folds_changed })
+  -- Newly visible rows need their signs/colors before the first scroll redraw.
+  -- Keep data-change events debounced, but never defer scroll cache updates.
+  vim.api.nvim_create_autocmd("WinScrolled", { group = group, callback = M.refresh })
   vim.api.nvim_create_autocmd({
     "BufWinEnter",
     "WinEnter",
-    "WinScrolled",
     "WinResized",
     "TextChanged",
     "TextChangedI",

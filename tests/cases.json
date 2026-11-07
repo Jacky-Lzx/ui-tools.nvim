@@ -1,0 +1,765 @@
+{
+  "version": 1,
+  "default": [
+    "unit",
+    "ui",
+    "format"
+  ],
+  "defaults": {},
+  "cases": [
+    {
+      "name": "runner-contracts",
+      "suite": "unit",
+      "command": [
+        "{python}",
+        "tests/runner_checks.py"
+      ],
+      "files": [
+        "tests/runner_checks.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "state",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/state.lua"
+      ],
+      "files": [
+        "tests/state.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "setup_contract",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/setup_contract.lua"
+      ],
+      "files": [
+        "tests/setup_contract.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "key_ownership",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/key_ownership.lua"
+      ],
+      "files": [
+        "tests/key_ownership.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "animation",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/animation.lua"
+      ],
+      "files": [
+        "tests/animation.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "colors",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/colors.lua"
+      ],
+      "files": [
+        "tests/colors.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "todo",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/todo.lua"
+      ],
+      "files": [
+        "tests/todo.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "indent",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/indent.lua"
+      ],
+      "files": [
+        "tests/indent.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "fold",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/fold.lua"
+      ],
+      "files": [
+        "tests/fold.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "statuscolumn",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/statuscolumn.lua"
+      ],
+      "files": [
+        "tests/statuscolumn.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "feedback",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/feedback.lua"
+      ],
+      "files": [
+        "tests/feedback.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "focus",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/focus.lua"
+      ],
+      "files": [
+        "tests/focus.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "scrollbar",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/scrollbar.lua"
+      ],
+      "files": [
+        "tests/scrollbar.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "context_menu",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/context_menu.lua"
+      ],
+      "files": [
+        "tests/context_menu.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "context_lsp",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/context_lsp.lua"
+      ],
+      "files": [
+        "tests/context_lsp.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "dashboard",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/dashboard.lua"
+      ],
+      "files": [
+        "tests/dashboard.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "bufferline",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/bufferline.lua"
+      ],
+      "files": [
+        "tests/bufferline.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "bufferline_special",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/bufferline_special.lua"
+      ],
+      "files": [
+        "tests/bufferline_special.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "buffer_commands",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/buffer_commands.lua"
+      ],
+      "files": [
+        "tests/buffer_commands.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "theme",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/theme.lua"
+      ],
+      "files": [
+        "tests/theme.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "theme_overrides",
+      "suite": "unit",
+      "command": [
+        "{nvim}",
+        "--headless",
+        "-n",
+        "-u",
+        "NONE",
+        "-i",
+        "NONE",
+        "--noplugin",
+        "-l",
+        "tests/theme_overrides.lua"
+      ],
+      "files": [
+        "tests/theme_overrides.lua"
+      ],
+      "timeout": 90
+    },
+    {
+      "name": "lua_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/lua_ui.py",
+        "tests/statusline.lua",
+        "--width",
+        "240"
+      ],
+      "files": [
+        "tests/lua_ui.py",
+        "tests/statusline.lua"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "lua_ui-2",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/lua_ui.py",
+        "tests/winbar.lua",
+        "--width",
+        "180"
+      ],
+      "files": [
+        "tests/lua_ui.py",
+        "tests/winbar.lua"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "animation_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/animation_ui.py"
+      ],
+      "files": [
+        "tests/animation_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/ui.py"
+      ],
+      "files": [
+        "tests/ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "colors_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/colors_ui.py"
+      ],
+      "files": [
+        "tests/colors_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "todo_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/todo_ui.py"
+      ],
+      "files": [
+        "tests/todo_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "annotations_pty",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/annotations_pty.py"
+      ],
+      "files": [
+        "tests/annotations_pty.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "search_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/search_ui.py"
+      ],
+      "files": [
+        "tests/search_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "statuscolumn_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/statuscolumn_ui.py"
+      ],
+      "files": [
+        "tests/statuscolumn_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "statuscolumn_style_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/statuscolumn_style_ui.py"
+      ],
+      "files": [
+        "tests/statuscolumn_style_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "statuscolumn_scroll_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/statuscolumn_scroll_ui.py"
+      ],
+      "files": [
+        "tests/statuscolumn_scroll_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "theme_overrides_ui",
+      "suite": "integration",
+      "command": [
+        "{python}",
+        "tests/theme_overrides_ui.py"
+      ],
+      "files": [
+        "tests/theme_overrides_ui.py"
+      ],
+      "requires": [
+        "path:{root}/../theme-tools.nvim/lua"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "scrollbar_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/scrollbar_ui.py"
+      ],
+      "files": [
+        "tests/scrollbar_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "scrollbar_cursor_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/scrollbar_cursor_ui.py"
+      ],
+      "files": [
+        "tests/scrollbar_cursor_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "context_menu_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/context_menu_ui.py"
+      ],
+      "files": [
+        "tests/context_menu_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "context_lsp_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/context_lsp_ui.py"
+      ],
+      "files": [
+        "tests/context_lsp_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "dashboard_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/dashboard_ui.py"
+      ],
+      "files": [
+        "tests/dashboard_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "dashboard_startup_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/dashboard_startup_ui.py"
+      ],
+      "files": [
+        "tests/dashboard_startup_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "dashboard_bufferline_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/dashboard_bufferline_ui.py"
+      ],
+      "files": [
+        "tests/dashboard_bufferline_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "bufferline_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/bufferline_ui.py"
+      ],
+      "files": [
+        "tests/bufferline_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "statusline_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/statusline_ui.py"
+      ],
+      "files": [
+        "tests/statusline_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "statusline_semantics_ui",
+      "suite": "integration",
+      "command": [
+        "{python}",
+        "tests/statusline_semantics_ui.py"
+      ],
+      "files": [
+        "tests/statusline_semantics_ui.py"
+      ],
+      "requires": [
+        "path:{root}/../theme-tools.nvim/lua"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "winbar_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/winbar_ui.py"
+      ],
+      "files": [
+        "tests/winbar_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "special_bars_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/special_bars_ui.py"
+      ],
+      "files": [
+        "tests/special_bars_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "fold_ui",
+      "suite": "ui",
+      "command": [
+        "{python}",
+        "tests/fold_ui.py"
+      ],
+      "files": [
+        "tests/fold_ui.py"
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "stylua",
+      "suite": "format",
+      "command": [
+        "stylua",
+        "--check",
+        "lua",
+        "tests",
+        "examples"
+      ],
+      "files": [],
+      "timeout": 90
+    }
+  ],
+  "support": {
+    "tests/rpc.py": "Loaded by tests/statuscolumn_style_ui.py",
+    "tests/helpers.lua": "Loaded by tests/feedback.lua",
+    "tests/run.sh": "Stable shell entry point for tests/run.py"
+  },
+  "manual": {
+    "tests/bars_bench.lua": "Opt-in real UI bar interaction benchmark"
+  },
+  "fixtures": {
+    "theme-tools.nvim": {
+      "repository": "Jacky-Lzx/theme-tools.nvim",
+      "revision": "6eb5fc94618dd0f8e03d97515f8852274a3e6167",
+      "path": "{root}/../theme-tools.nvim"
+    }
+  }
+}

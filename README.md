@@ -938,3 +938,5 @@ deletion occurs. Existing module validation runs before replacing the live UI.
 `get_state(name)` returns an independent live `{ enabled }` snapshot, or `nil`
 for an unloaded feature. Focus also reports `mode`, `win`, `source` and `dimmed`.
 Reads never load feature modules or prepare windows, timers or decorations.
+
+[Test workflow](tests/README.md): registered suites, filtering, required fixtures and retained failure evidence.
